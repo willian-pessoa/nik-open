@@ -127,7 +127,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                       </div>
                     </div>
 
-                    <h4 className="history-opening-title">{game.targetOpening}</h4>
+                    <h4 className="history-opening-title">{game.openingName || 'Abertura Livre'}</h4>
                     <div className="history-date-row">
                       <span>{new Date(game.timestamp).toLocaleDateString()} às {new Date(game.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       <span>•</span>

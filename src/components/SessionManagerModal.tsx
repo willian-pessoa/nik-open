@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, Plus, Trash2, Check, BookOpen, Shield, Flame, ArrowRight } from 'lucide-react';
 import type { StudySession, GameMode, PlayerColor } from '../types/chess';
-import { TARGET_OPENINGS } from '../services/openingBook';
 
 interface SessionManagerModalProps {
   isOpen: boolean;
@@ -28,41 +27,22 @@ export const SessionManagerModal: React.FC<SessionManagerModalProps> = ({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [mode, setMode] = useState<GameMode>('tutor');
-  const [playerColor, setPlayerColor] = useState<PlayerColor>('b');
-  const [initialWhiteMove, setInitialWhiteMove] = useState('e4');
-  const [targetOpeningKey, setTargetOpeningKey] = useState(TARGET_OPENINGS[0].id);
+  const [playerColor, setPlayerColor] = useState<PlayerColor>('w');
+  const [initialWhiteMove, setInitialWhiteMove] = useState('any');
   const [initialRating, setInitialRating] = useState(1600);
 
   if (!isOpen) return null;
-
-  const handleSelectPredefined = (openingId: string) => {
-    setTargetOpeningKey(openingId);
-    const target = TARGET_OPENINGS.find(o => o.id === openingId);
-    if (target) {
-      setName(target.name);
-      setDescription(target.description);
-      setPlayerColor(target.playerColor);
-      if (target.initialMove) {
-        setInitialWhiteMove(target.initialMove);
-      }
-    }
-  };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    const target = TARGET_OPENINGS.find(o => o.id === targetOpeningKey);
-    const targetName = target ? target.name : name;
-
     onCreateSession({
       name: name.trim(),
-      description: description.trim() || 'Sessão personalizada de treino de aberturas',
+      description: description.trim() || 'Treino livre de aberturas com base no banco do Lichess',
       mode,
       playerColor,
       initialWhiteMove: playerColor === 'b' ? initialWhiteMove : undefined,
-      targetOpeningKey,
-      targetOpeningName: targetName,
       tutorRating: mode === 'tutor' ? initialRating : 1500,
       hardRating: mode === 'hard' ? initialRating : 1500
     });
@@ -89,13 +69,13 @@ export const SessionManagerModal: React.FC<SessionManagerModalProps> = ({
           <div className="sessions-list-view">
             <div className="sessions-intro">
               <p>
-                Crie repertórios independentes para cada abertura. Cada sessão mantém seu próprio <strong>Rating</strong>, <strong>Histórico de Partidas</strong> e <strong>Modo de Treino</strong>.
+                Crie desafios livres e independentes. Você tem total liberdade de lances: a engine responderá com as jogadas mais frequentes no Lichess Blitz no seu nível de rating. Cada sessão tem seu próprio <strong>Rating</strong> e <strong>Histórico</strong>.
               </p>
               <button
                 type="button"
                 className="create-new-session-btn"
                 onClick={() => {
-                  handleSelectPredefined(TARGET_OPENINGS[0].id);
+                  setName('Novo Repertório');
                   setIsCreating(true);
                 }}
               >
@@ -145,9 +125,9 @@ export const SessionManagerModal: React.FC<SessionManagerModalProps> = ({
                     <h4 className="session-card-name">{s.name}</h4>
                     <p className="session-card-desc">{s.description}</p>
 
-                    {s.playerColor === 'b' && s.initialWhiteMove && (
+                    {s.playerColor === 'b' && s.initialWhiteMove && s.initialWhiteMove !== 'any' && (
                       <div className="session-first-move-note">
-                        Lance inicial das Brancas: <strong>1. {s.initialWhiteMove}</strong>
+                        Lance inicial configurado das Brancas: <strong>1. {s.initialWhiteMove}</strong>
                       </div>
                     )}
 
@@ -193,23 +173,7 @@ export const SessionManagerModal: React.FC<SessionManagerModalProps> = ({
           </div>
         ) : (
           <form onSubmit={handleFormSubmit} className="session-create-form">
-            <h4 className="form-section-title">Configurar Novo Repertório de Abertura</h4>
-
-            {/* Predefined options */}
-            <div className="form-group">
-              <label>Escolha uma Linha Teórica ou Personalize:</label>
-              <select
-                className="form-select"
-                value={targetOpeningKey}
-                onChange={(e) => handleSelectPredefined(e.target.value)}
-              >
-                {TARGET_OPENINGS.map(o => (
-                  <option key={o.id} value={o.id}>
-                    [{o.eco}] {o.name} ({o.playerColor === 'w' ? 'Brancas' : 'Pretas'})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <h4 className="form-section-title">Configurar Nova Sessão de Abertura</h4>
 
             {/* Custom Name */}
             <div className="form-group">
@@ -220,26 +184,26 @@ export const SessionManagerModal: React.FC<SessionManagerModalProps> = ({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Defesa Siciliana Fechada"
+                placeholder="Ex: Treino de Brancas, Siciliana Aberta, Defesa contra 1.d4..."
               />
             </div>
 
             {/* Description */}
             <div className="form-group">
-              <label>Descrição ou Plano Estratégico:</label>
+              <label>Descrição ou Objetivo:</label>
               <input
                 type="text"
                 className="form-input"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ex: Prática da linha com g3 e f4 na Siciliana"
+                placeholder="Ex: Prática livre simulando partidas reais de Blitz"
               />
             </div>
 
             <div className="form-row-2col">
               {/* Mode */}
               <div className="form-group">
-                <label>Modo de Treino:</label>
+                <label>Modo de Jogo:</label>
                 <div className="radio-cards-row">
                   <label className={`radio-card ${mode === 'tutor' ? 'selected' : ''}`}>
                     <input
@@ -251,7 +215,7 @@ export const SessionManagerModal: React.FC<SessionManagerModalProps> = ({
                     />
                     <div className="radio-card-content">
                       <strong>Modo Tutor</strong>
-                      <span>Com dicas e sugestão dos 3 melhores lances ao errar.</span>
+                      <span>Com dicas e recomendação dos 3 melhores lances ao errar.</span>
                     </div>
                   </label>
                   <label className={`radio-card ${mode === 'hard' ? 'selected' : ''}`}>
@@ -284,7 +248,7 @@ export const SessionManagerModal: React.FC<SessionManagerModalProps> = ({
                     />
                     <div className="radio-card-content">
                       <strong>♔ Brancas</strong>
-                      <span>Você joga primeiro</span>
+                      <span>Você joga o primeiro lance</span>
                     </div>
                   </label>
                   <label className={`radio-card ${playerColor === 'b' ? 'selected' : ''}`}>
@@ -297,7 +261,7 @@ export const SessionManagerModal: React.FC<SessionManagerModalProps> = ({
                     />
                     <div className="radio-card-content">
                       <strong>♚ Pretas</strong>
-                      <span>Adversário abre a partida</span>
+                      <span>A engine abre a partida</span>
                     </div>
                   </label>
                 </div>
@@ -307,17 +271,17 @@ export const SessionManagerModal: React.FC<SessionManagerModalProps> = ({
             {/* If Black: Initial White move selection */}
             {playerColor === 'b' && (
               <div className="form-group">
-                <label>Lance Inicial das Brancas:</label>
+                <label>Lance Inicial da Engine (Brancas):</label>
                 <select
                   className="form-select"
                   value={initialWhiteMove}
                   onChange={(e) => setInitialWhiteMove(e.target.value)}
                 >
+                  <option value="any">Livre / Sorteado pelo Banco do Lichess no seu ELO</option>
                   <option value="e4">1. e4 (Abertura do Peão do Rei)</option>
                   <option value="d4">1. d4 (Abertura do Peão da Dama)</option>
                   <option value="c4">1. c4 (Abertura Inglesa)</option>
-                  <option value="Nf3">1. Nf3 (Abertura Réti / Zukertort)</option>
-                  <option value="random">Aleatório (Sorteado pelo Banco do Lichess)</option>
+                  <option value="Nf3">1. Nf3 (Abertura Réti / Cavalo do Rei)</option>
                 </select>
               </div>
             )}

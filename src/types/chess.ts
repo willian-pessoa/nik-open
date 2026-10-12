@@ -7,9 +7,7 @@ export interface StudySession {
   description: string;
   mode: GameMode;
   playerColor: PlayerColor;
-  initialWhiteMove?: string; // e.g. "e4", "d4", "c4", "Nf3"
-  targetOpeningKey: string;
-  targetOpeningName: string;
+  initialWhiteMove?: string; // e.g. "e4", "d4", "c4", "Nf3", or "any"
   tutorRating: number;
   hardRating: number;
   gamesCount: number;
@@ -26,7 +24,7 @@ export interface GameHistoryItem {
   sessionName: string;
   mode: GameMode;
   playerColor: PlayerColor;
-  targetOpening: string;
+  openingName: string;
   eco: string;
   pgn: string;
   fen: string;
@@ -44,7 +42,7 @@ export interface GameHistoryItem {
 export interface EngineMoveEvaluation {
   san: string;
   uci: string;
-  score: number; // Centipawns from White's perspective, or converted to Player perspective
+  score: number; // Centipawns from White's perspective
   mate: number | null;
   depth: number;
   pv: string[];
@@ -64,7 +62,7 @@ export interface OpeningBookMove {
 export interface OpeningBookEntry {
   eco: string;
   name: string;
+  totalGames: number;
   moves: OpeningBookMove[];
   plan?: string;
-  recommendedDepth?: number;
 }

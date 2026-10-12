@@ -23,14 +23,11 @@ const DEFAULT_SETTINGS: UserSettings = {
 
 const DEFAULT_SESSIONS: StudySession[] = [
   {
-    id: 'session-sicilian-closed',
-    name: 'Defesa Siciliana: Fechada',
-    description: 'Prática da variante fechada de Brancas contra a Siciliana',
+    id: 'session-white-free',
+    name: 'Treino Aberto de Brancas',
+    description: 'Prática livre com as peças brancas. A engine escolhe as respostas mais populares do Blitz no seu nível.',
     mode: 'tutor',
     playerColor: 'w',
-    initialWhiteMove: 'e4',
-    targetOpeningKey: 'sicilian-closed',
-    targetOpeningName: 'Defesa Siciliana: Fechada (B23)',
     tutorRating: 1600,
     hardRating: 1550,
     gamesCount: 0,
@@ -43,34 +40,47 @@ const DEFAULT_SESSIONS: StudySession[] = [
     ]
   },
   {
-    id: 'session-benoni',
-    name: 'Gambito Benoni Moderno',
-    description: 'Defesa ativa de Pretas contra 1.d4 das brancas',
+    id: 'session-black-e4',
+    name: 'Defesa de Pretas vs 1.e4',
+    description: 'Prática de Pretas contra 1.e4 das brancas. Você escolhe suas defesas e a engine responde conforme o banco do Lichess.',
     mode: 'tutor',
     playerColor: 'b',
-    initialWhiteMove: 'd4',
-    targetOpeningKey: 'benoni-modern',
-    targetOpeningName: 'Gambito Benoni Moderno (A60)',
-    tutorRating: 1800,
-    hardRating: 1750,
+    initialWhiteMove: 'e4',
+    tutorRating: 1600,
+    hardRating: 1550,
     gamesCount: 0,
     completedCount: 0,
     blundersCount: 0,
     createdAt: Date.now() - 86400000 * 3,
     lastPlayedAt: Date.now() - 7200000,
     ratingHistory: [
-      { timestamp: Date.now() - 86400000 * 3, rating: 1800, mode: 'tutor' }
+      { timestamp: Date.now() - 86400000 * 3, rating: 1600, mode: 'tutor' }
     ]
   },
   {
-    id: 'session-ruy-lopez',
-    name: 'Ruy Lopez: Berlinesa',
-    description: 'Estudo sólido do Muro de Berlim de Pretas',
-    mode: 'hard',
+    id: 'session-black-d4',
+    name: 'Defesa de Pretas vs 1.d4',
+    description: 'Prática de Pretas contra 1.d4 das brancas.',
+    mode: 'tutor',
     playerColor: 'b',
-    initialWhiteMove: 'e4',
-    targetOpeningKey: 'ruy-lopez-berlin',
-    targetOpeningName: 'Ruy Lopez: Berlinesa (C65)',
+    initialWhiteMove: 'd4',
+    tutorRating: 1800,
+    hardRating: 1750,
+    gamesCount: 0,
+    completedCount: 0,
+    blundersCount: 0,
+    createdAt: Date.now() - 86400000,
+    lastPlayedAt: Date.now(),
+    ratingHistory: [
+      { timestamp: Date.now() - 86400000, rating: 1800, mode: 'tutor' }
+    ]
+  },
+  {
+    id: 'session-hard-mode',
+    name: 'Desafio Difícil (Sem Tutoria)',
+    description: 'Teste suas aberturas sem nenhum auxílio da engine. Erros encerram a abertura imediatamente!',
+    mode: 'hard',
+    playerColor: 'w',
     tutorRating: 1500,
     hardRating: 1500,
     gamesCount: 0,
@@ -110,7 +120,7 @@ export const StorageService = {
     const stored = localStorage.getItem(ACTIVE_SESSION_KEY);
     if (stored) return stored;
     const sessions = this.getSessions();
-    const firstId = sessions[0]?.id || 'session-sicilian-closed';
+    const firstId = sessions[0]?.id || 'session-white-free';
     this.setActiveSessionId(firstId);
     return firstId;
   },
@@ -216,12 +226,16 @@ export const StorageService = {
     }
   },
 
-  // User Settings
   getSettings(): UserSettings {
     try {
       const data = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (!data) return DEFAULT_SETTINGS;
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
+      const parsed = JSON.parse(data);
+      return {
+        ...DEFAULT_SETTINGS,
+        ...parsed,
+        lichessToken: parsed.lichessToken ?? ''
+      };
     } catch {
       return DEFAULT_SETTINGS;
     }

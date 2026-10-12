@@ -7,24 +7,33 @@ interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSettingsSaved: (settings: UserSettings) => void;
+  isRequired?: boolean;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
-  onSettingsSaved
+  onSettingsSaved,
+  isRequired = false
 }) => {
   const currentSettings = StorageService.getSettings();
   const [token, setToken] = useState(currentSettings.lichessToken || '');
   const [soundEnabled, setSoundEnabled] = useState(currentSettings.soundEnabled);
   const [engineDepth, setEngineDepth] = useState(currentSettings.engineDepth);
+  const [tokenError, setTokenError] = useState('');
 
   if (!isOpen) return null;
 
   const handleSave = () => {
+    const trimmed = token.trim();
+    if (!trimmed) {
+      setTokenError('O token de acesso do Lichess é obrigatório para consultar as aberturas ao vivo.');
+      return;
+    }
+    setTokenError('');
     const updated: UserSettings = {
       ...currentSettings,
-      lichessToken: token.trim(),
+      lichessToken: trimmed,
       soundEnabled,
       engineDepth
     };
@@ -40,32 +49,57 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="modal-header">
           <div className="modal-header-title">
             <Settings size={22} className="text-emerald-400" />
-            <h3>Configurações do NIK-Open</h3>
+            <h3>{isRequired ? 'Configuração Obrigatória do Lichess' : 'Configurações do NIK-Open'}</h3>
           </div>
-          <button type="button" className="close-btn" onClick={onClose}>
-            <X size={20} />
-          </button>
+          {!isRequired && (
+            <button type="button" className="close-btn" onClick={onClose}>
+              <X size={20} />
+            </button>
+          )}
         </div>
 
         <div className="settings-content">
+          {isRequired && (
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '8px',
+              padding: '0.85rem 1rem',
+              color: '#fca5a5',
+              fontSize: '0.85rem',
+              lineHeight: 1.45
+            }}>
+              <strong>Atenção:</strong> Para utilizar o NIK-Open com consultas oficiais em tempo real (todas as velocidades: UltraBullet, Bullet, Blitz, Rapid, Classical e Correspondence), é necessário informar seu <strong>Personal API Access Token</strong> do Lichess.
+            </div>
+          )}
+
           {/* Lichess Token */}
           <div className="setting-block">
             <div className="setting-label-row">
               <Key size={18} className="text-amber-400" />
-              <strong>Token Pessoal do Lichess (Opcional)</strong>
+              <strong>Token Pessoal de Acesso do Lichess {isRequired ? '(Obrigatório)' : ''}</strong>
             </div>
             <p className="setting-desc">
-              O NIK-Open já inclui uma árvore local completa baseada em milhões de partidas de Blitz do Lichess. Caso queira consultar a API ao vivo diretamente da sua conta, insira um token com permissão de leitura.
+              Todas as aberturas são pesquisadas ao vivo na base de dados global do Lichess Opening Explorer. Insira o seu token pessoal para liberar o aplicativo.
             </p>
             <input
               type="password"
               className="form-input"
               value={token}
-              onChange={(e) => setToken(e.target.value)}
+              onChange={(e) => {
+                setToken(e.target.value);
+                if (tokenError) setTokenError('');
+              }}
               placeholder="lip_xxxxxxxxxxxxxxxxxxxxxxxx"
+              autoFocus={isRequired}
             />
+            {tokenError && (
+              <span style={{ color: '#f87171', fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' }}>
+                {tokenError}
+              </span>
+            )}
             <span className="setting-hint">
-              Pode ser gerado gratuitamente em <a href="https://lichess.org/account/oauth/token" target="_blank" rel="noreferrer">lichess.org/account/oauth/token</a>.
+              Crie o seu token gratuitamente em <a href="https://lichess.org/account/oauth/token" target="_blank" rel="noreferrer">lichess.org/account/oauth/token</a> (não é necessário marcar permissões especiais de escrita).
             </span>
           </div>
 
@@ -110,12 +144,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         <div className="modal-actions-row">
-          <button type="button" className="action-btn retry-btn" onClick={onClose}>
-            Cancelar
-          </button>
-          <button type="button" className="action-btn new-game-btn" onClick={handleSave}>
+          {!isRequired && (
+            <button type="button" className="action-btn retry-btn" onClick={onClose}>
+              Cancelar
+            </button>
+          )}
+          <button type="button" className="action-btn new-game-btn" onClick={handleSave} style={{ width: isRequired ? '100%' : undefined }}>
             <Save size={16} />
-            Salvar Preferências
+            {isRequired ? 'Salvar Token e Liberar Aplicação' : 'Salvar Preferências'}
           </button>
         </div>
       </div>
