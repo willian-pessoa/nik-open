@@ -8,9 +8,13 @@ import {
   type PieceHandlerArgs,
   type SquareHandlerArgs,
 } from "react-chessboard";
+import { getNextMove } from "../services/lichessApi";
+import { getRandomMoveByWeight } from "../utils/getRandomMoveByWeight";
+import { normalizeLichessUci } from "../utils/normalizeLichesUci";
 
 export interface IAppChessBoardProps {
   playerOrientation?: "w" | "b";
+  playerRating: number;
 }
 
 const getBoardOrientation = (playerSide: "w" | "b") => {
@@ -19,6 +23,7 @@ const getBoardOrientation = (playerSide: "w" | "b") => {
 
 export default function AppChessBoard({
   playerOrientation = "w",
+  playerRating,
 }: IAppChessBoardProps) {
   // create a chess game using a ref to always have access to the latest game state within closures and maintain the game state across renders
   const chessGameRef = useRef(new Chess());
@@ -33,44 +38,75 @@ export default function AppChessBoard({
   // state to manage click-to-move selection
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
 
-  // make a random "CPU" move
-  function makeRandomMove() {
-    // get all possible moves
-    const possibleMoves = chessGame.moves();
+  function makeCpuMove(from: string, to: string) {
+    try {
+      chessGame.move({
+        from: from as Square,
+        to: to as Square,
+        promotion: "q",
+      });
+      setChessPosition(chessGame.fen());
+      return true;
+    } catch (error) {
+      console.error("Movimento inválido:", error);
+      return false;
+    }
+  }
 
-    // exit if the game is over
+  // Faz um movimento inteligente baseado no banco de dados do lichess
+  async function makeSmartCpuMove() {
     if (chessGame.isGameOver()) {
       return;
     }
 
-    // make a random move
-    const randomMove =
-      possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-    chessGame.move(randomMove);
-    setChessPosition(chessGame.fen());
+    // Consulta os 90% lances mais populares baseados no rating do jogador
+    const topMoves = await getNextMove(playerRating, chessGame.fen());
+    console.log("🚀 ~ makeSmartCpuMove ~ topMoves:", topMoves);
+    let selectedMoveUci: string | null = null;
 
-    // if there is a premove, remove it from the list and make it once animation is complete
+    if (topMoves.length > 0) {
+      const weightedMove = getRandomMoveByWeight(topMoves);
+      if (weightedMove) {
+        selectedMoveUci = normalizeLichessUci(weightedMove.uci);
+      }
+    }
+
+    // Fallback: se a API falhar ou não encontrar registros, recorre aos lances válidos do chess.js aleatoriamente
+    if (!selectedMoveUci) {
+      const possibleMoves = chessGame.moves({ verbose: true });
+      if (possibleMoves.length === 0) return;
+      const fallbackMove =
+        possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+      selectedMoveUci = `${fallbackMove.from}${fallbackMove.to}${fallbackMove.promotion || ""}`;
+    }
+
+    try {
+      chessGame.move({
+        from: selectedMoveUci.slice(0, 2) as Square,
+        to: selectedMoveUci.slice(2, 4) as Square,
+        promotion: selectedMoveUci[4] || "q",
+      });
+      setChessPosition(chessGame.fen());
+    } catch (e) {
+      console.error("Erro ao executar o lance da CPU:", e);
+      return;
+    }
+
+    // Gerenciamento de premoves (mantido igual)
     if (premovesRef.current.length > 0) {
       const nextPlayerPremove = premovesRef.current[0];
       premovesRef.current.splice(0, 1);
 
-      // wait for CPU move animation to complete
       setTimeout(() => {
-        // execute the premove
         const premoveSuccessful = onPieceDrop(nextPlayerPremove);
 
-        // if the premove was not successful, clear all premoves
         if (!premoveSuccessful) {
           premovesRef.current = [];
         }
 
-        // update the premoves state
         setPremoves([...premovesRef.current]);
-
-        // disable animations while clearing premoves
         setShowAnimations(false);
 
-        // re-enable animations after a short delay
         setTimeout(() => {
           setShowAnimations(true);
         }, 50);
@@ -114,8 +150,8 @@ export default function AppChessBoard({
       setChessPosition(chessGame.fen());
       setSelectedSquare(null); // clear selection on successful move
 
-      // make random cpu move after a slightly longer delay to allow user to premove
-      setTimeout(makeRandomMove, 3000);
+      // make cpu move after a slightly delay
+      setTimeout(makeSmartCpuMove, 500);
 
       // return true as the move was successful
       return true;
@@ -156,7 +192,7 @@ export default function AppChessBoard({
           if (moveResult) {
             setChessPosition(chessGame.fen());
             setSelectedSquare(null);
-            setTimeout(makeRandomMove, 3000);
+            setTimeout(makeSmartCpuMove, 500);
             return;
           }
         } catch {
@@ -209,7 +245,7 @@ export default function AppChessBoard({
     }, 50);
   }
 
-  // only allow white pieces to be dragged
+  // only allow player pieces to be dragged
   function canDragPiece({ piece }: PieceHandlerArgs) {
     return piece.pieceType[0] === playerOrientation;
   }
@@ -266,13 +302,12 @@ export default function AppChessBoard({
   };
 
   useEffect(() => {
-    console.log("🚀 ~ AppChessBoard ~ chessGame:", chessGame);
     if (
       chessGame.moveNumber() === 1 &&
       chessGame.turn() === "w" &&
       playerOrientation === "b"
     ) {
-      makeRandomMove();
+      makeCpuMove("e2", "e4");
     }
   }, [playerOrientation]);
 

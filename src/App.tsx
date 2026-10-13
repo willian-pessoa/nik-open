@@ -9,7 +9,7 @@ function App() {
     <div className="flex flex-col bg-slate-950 h-screen w-screen text-slate-50 text-lg overflow-hidden">
       <AppHeader />
       <div className="flex flex-1 min-h-0 gap-2 p-2">
-        <AppChessBoard playerOrientation="b" />
+        <AppChessBoard playerOrientation="b" playerRating={1200} />
         <AppChessMoves />
       </div>
     </div>
