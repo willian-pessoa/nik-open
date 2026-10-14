@@ -11,7 +11,11 @@ import {
 import { getNextMove } from "../services/lichessApi";
 import { getRandomMoveByWeight } from "../utils/getRandomMoveByWeight";
 import { normalizeLichessUci } from "../utils/normalizeLichesUci";
-import { evaluatePosition, initStockfish } from "../services/stockfishService";
+import {
+  analyzePositionAsync,
+  evaluatePosition,
+  initStockfish,
+} from "../services/stockfishService";
 
 export interface IAppChessBoardProps {
   playerOrientation?: "w" | "b";
@@ -47,6 +51,12 @@ export default function AppChessBoard({
         promotion: "q",
       });
       setChessPosition(chessGame.fen());
+
+      // Avaliar Posicao
+      setTimeout(() => {
+        evaluatePosition(chessGame.fen());
+      });
+
       return true;
     } catch (error) {
       console.error("Movimento inválido:", error);
@@ -62,7 +72,6 @@ export default function AppChessBoard({
 
     // Consulta os 90% lances mais populares baseados no rating do jogador
     const topMoves = await getNextMove(playerRating, chessGame.fen());
-    console.log("🚀 ~ makeSmartCpuMove ~ topMoves:", topMoves);
     let selectedMoveUci: string | null = null;
 
     if (topMoves.length > 0) {
@@ -82,15 +91,26 @@ export default function AppChessBoard({
     }
 
     try {
+      const tempGame = new Chess(chessGame.fen());
+      tempGame.move({
+        from: selectedMoveUci.slice(0, 2) as Square,
+        to: selectedMoveUci.slice(2, 4) as Square,
+        promotion: selectedMoveUci[4] || "q",
+      });
+
+      const fenSimulada = tempGame.fen();
+
+      //  Pede a análise da posição futura (simulada)
+      // A CPU vai "esperar" aqui enquanto o Stockfish analisa
+      await analyzePositionAsync(fenSimulada);
+
       chessGame.move({
         from: selectedMoveUci.slice(0, 2) as Square,
         to: selectedMoveUci.slice(2, 4) as Square,
         promotion: selectedMoveUci[4] || "q",
       });
-      setChessPosition(chessGame.fen());
 
-      // Avaliar Posicao
-      evaluatePosition(chessGame.fen());
+      setChessPosition(chessGame.fen());
     } catch (e) {
       console.error("Erro ao executar o lance da CPU:", e);
       return;
@@ -169,7 +189,7 @@ export default function AppChessBoard({
   }
 
   // handle square click for click-to-move
-  function onSquareClick({ square, piece }: SquareHandlerArgs) {
+  async function onSquareClick({ square, piece }: SquareHandlerArgs) {
     // Se já temos uma casa selecionada
     if (selectedSquare) {
       if (selectedSquare === square) {
@@ -201,7 +221,7 @@ export default function AppChessBoard({
             setSelectedSquare(null);
 
             // Avaliar Posicao
-            evaluatePosition(chessGame.fen());
+            await analyzePositionAsync(chessGame.fen());
 
             // Vez da CPU jogar
             setTimeout(makeSmartCpuMove, 500);
@@ -343,11 +363,24 @@ export default function AppChessBoard({
     }
   }, [playerOrientation]);
 
+  // STOCKFISH
+  const [topMovesAnalysis, setTopMovesAnalysis] = useState<
+    Array<{ move: string; score: number; isMate: boolean; pv: string }>
+  >([]);
+  const [lastScoreForPlayer, setLastScoreForPlayer] = useState<number>(0);
+  const [lastScoreForCPU, setLastScoreForCPU] = useState<number>(0);
+
   useEffect(() => {
-    initStockfish((bestMove, evaluation) => {
-      console.log("🚀 ~ AppChessBoard ~ evaluation:", evaluation);
-      console.log("Stockfish - Melhor lance:", bestMove);
-      // Aqui você pode tratar o feedback para o usuário depois se quiser
+    initStockfish((evaluations, turn) => {
+      console.log("🚀 ~ AppChessBoard ~ turn:", turn);
+      setTopMovesAnalysis(evaluations);
+      if (evaluations.length > 0) {
+        if (turn === playerOrientation) {
+          setLastScoreForPlayer(evaluations[0].score);
+        } else {
+          setLastScoreForCPU(evaluations[0].score);
+        }
+      }
     });
   }, []);
 
