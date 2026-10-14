@@ -254,6 +254,15 @@ export default function AppChessBoard({
   const position = fenStringToPositionObject(chessPosition, 8, 8);
   const squareStyles: Record<string, React.CSSProperties> = {};
 
+  // Destacar o último movimento realizado no jogo
+  const history = chessGame.history({ verbose: true });
+  if (history.length > 0) {
+    const lastMove = history[history.length - 1];
+    const lastMoveStyle = { backgroundColor: "rgba(155, 199, 0, 0.4)" };
+    squareStyles[lastMove.from] = lastMoveStyle;
+    squareStyles[lastMove.to] = lastMoveStyle;
+  }
+
   // highlight selected square for click-to-move
   if (selectedSquare) {
     squareStyles[selectedSquare] = {
@@ -265,12 +274,23 @@ export default function AppChessBoard({
       square: selectedSquare,
       verbose: true,
     });
+
     for (const move of validMoves) {
-      squareStyles[move.to] = {
-        background:
-          "radial-gradient(circle, rgba(0,0,0,0.2) 25%, transparent 25%)",
-        borderRadius: "50%",
-      };
+      if (move.captured) {
+        // Se a casa contém uma peça capturável, aplica uma borda vermelha (e mantém um indicador visual de alvo)
+        squareStyles[move.to] = {
+          boxShadow: "inset 0 0 0 4px rgba(255, 0, 0, 0.6)",
+          background:
+            "radial-gradient(circle, transparent 20%, rgba(255, 0, 0, 0.2) 20%)",
+        };
+      } else {
+        // Movimento normal (sem captura)
+        squareStyles[move.to] = {
+          background:
+            "radial-gradient(circle, rgba(0,0,0,0.2) 25%, transparent 25%)",
+          borderRadius: "50%",
+        };
+      }
     }
   }
 
