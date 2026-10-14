@@ -11,6 +11,7 @@ import {
 import { getNextMove } from "../services/lichessApi";
 import { getRandomMoveByWeight } from "../utils/getRandomMoveByWeight";
 import { normalizeLichessUci } from "../utils/normalizeLichesUci";
+import { evaluatePosition, initStockfish } from "../services/stockfishService";
 
 export interface IAppChessBoardProps {
   playerOrientation?: "w" | "b";
@@ -87,6 +88,9 @@ export default function AppChessBoard({
         promotion: selectedMoveUci[4] || "q",
       });
       setChessPosition(chessGame.fen());
+
+      // Avaliar Posicao
+      evaluatePosition(chessGame.fen());
     } catch (e) {
       console.error("Erro ao executar o lance da CPU:", e);
       return;
@@ -150,7 +154,10 @@ export default function AppChessBoard({
       setChessPosition(chessGame.fen());
       setSelectedSquare(null); // clear selection on successful move
 
-      // make cpu move after a slightly delay
+      // Avaliar Posicao
+      evaluatePosition(chessGame.fen());
+
+      // Vez da CPU jogar
       setTimeout(makeSmartCpuMove, 500);
 
       // return true as the move was successful
@@ -192,6 +199,11 @@ export default function AppChessBoard({
           if (moveResult) {
             setChessPosition(chessGame.fen());
             setSelectedSquare(null);
+
+            // Avaliar Posicao
+            evaluatePosition(chessGame.fen());
+
+            // Vez da CPU jogar
             setTimeout(makeSmartCpuMove, 500);
             return;
           }
@@ -330,6 +342,14 @@ export default function AppChessBoard({
       makeCpuMove("e2", "e4");
     }
   }, [playerOrientation]);
+
+  useEffect(() => {
+    initStockfish((bestMove, evaluation) => {
+      console.log("🚀 ~ AppChessBoard ~ evaluation:", evaluation);
+      console.log("Stockfish - Melhor lance:", bestMove);
+      // Aqui você pode tratar o feedback para o usuário depois se quiser
+    });
+  }, []);
 
   return (
     <div className="p-2 h-full flex-1 min-w-0 min-h-0 overflow-hidden">
