@@ -1,61 +1,38 @@
-let stockfishWorker: Worker | null = null;
-let onEvaluationCallback:
-  | ((
-      evaluations: Array<{
-        move: string;
-        score: number;
-        isMate: boolean;
-        pv: string;
-      }>,
-      turn: "w" | "b",
-    ) => void)
-  | null = null;
-let currentTurn: "w" | "b" = "w";
-let currentResolve:
-  | ((
-      evaluations: Array<{
-        move: string;
-        score: number;
-        isMate: boolean;
-        pv: string;
-      }>,
-      turn: "w" | "b",
-    ) => void)
-  | null = null;
+export interface StockfishEvaluation {
+  move: string;
+  score: number;
+  isMate: boolean;
+  pv: string;
+}
 
-export function initStockfish(
-  callback: (
-    evaluations: Array<{
-      move: string;
-      score: number;
-      isMate: boolean;
-      pv: string;
-    }>,
-    turn: "w" | "b",
-  ) => void,
-) {
+export type StockfishTurn = "w" | "b";
+
+export type StockfishCallback = (
+  evaluations: StockfishEvaluation[],
+  turn: StockfishTurn,
+) => void;
+
+let stockfishWorker: Worker | null = null;
+let onEvaluationCallback: StockfishCallback | null = null;
+let currentTurn: StockfishTurn = "w";
+let currentResolve: StockfishCallback | null = null;
+
+export function initStockfish(callback: StockfishCallback) {
   if (stockfishWorker) return;
 
   onEvaluationCallback = callback;
-  stockfishWorker = new Worker("/stockfish-19-lite-single.js"); // Use o nome correto do seu arquivo baixado
+  stockfishWorker = new Worker("/stockfish-19-lite-single.js");
 
   stockfishWorker.postMessage("uci");
-  // Habilita o modo de múltiplos melhores lances (Top 5)
   stockfishWorker.postMessage("setoption name MultiPV value 5");
   stockfishWorker.postMessage("isready");
 
-  let currentEvaluations: Array<{
-    move: string;
-    score: number;
-    isMate: boolean;
-    pv: string;
-  }> = [];
+  let currentEvaluations: StockfishEvaluation[] = [];
 
   stockfishWorker.onmessage = (event) => {
     const line = event.data;
     if (typeof line !== "string") return;
 
-    // O motor envia linhas de info para cada um dos PVs (MultiPV) durante a busca
     if (
       line.includes("info") &&
       line.includes("score") &&
@@ -84,15 +61,16 @@ export function initStockfish(
       }
     }
 
-    // Quando termina a análise da profundidade/tempo, o motor retorna o bestmove
     if (line.startsWith("bestmove")) {
-      if (currentResolve && currentEvaluations.length > 0) {
-        currentResolve(currentEvaluations.filter(Boolean), currentTurn);
+      const validEvaluations = currentEvaluations.filter(Boolean);
+
+      if (currentResolve && validEvaluations.length > 0) {
+        currentResolve(validEvaluations, currentTurn);
         currentResolve = null;
       }
 
-      if (onEvaluationCallback && currentEvaluations.length > 0) {
-        onEvaluationCallback(currentEvaluations.filter(Boolean), currentTurn);
+      if (onEvaluationCallback && validEvaluations.length > 0) {
+        onEvaluationCallback(validEvaluations, currentTurn);
       }
 
       currentEvaluations = [];
@@ -103,38 +81,34 @@ export function initStockfish(
 export function evaluatePosition(fen: string) {
   if (!stockfishWorker) return;
 
-  // Extrai o turno ('w' ou 'b') diretamente do segundo campo da string FEN
-  // Exemplo de FEN: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1" -> o 'b' indica que a vez é das pretas
   const fenParts = fen.split(" ");
   if (fenParts.length > 1) {
     currentTurn = fenParts[1] === "b" ? "b" : "w";
   }
 
-  stockfishWorker.postMessage("stop interromper_busca_anterior"); // Para buscas anteriores se houver
+  stockfishWorker.postMessage("stop");
   stockfishWorker.postMessage(`position fen ${fen}`);
   stockfishWorker.postMessage("go depth 14");
 }
 
 export function analyzePositionAsync(
   fen: string,
-): Promise<
-  Array<{ move: string; score: number; isMate: boolean; pv: string }>
-> {
+): Promise<StockfishEvaluation[]> {
   return new Promise((resolve) => {
     if (!stockfishWorker) {
       resolve([]);
       return;
     }
 
-    // Se houver uma análise pendente anterior, resolve vazia para não travar
     if (currentResolve) {
       currentResolve([], currentTurn);
     }
 
-    currentResolve = resolve;
+    // Como o Promise resolve apenas o array de avaliações, adaptamos o callback interno
+    currentResolve = (evaluations) => {
+      resolve(evaluations);
+    };
 
-    // Extrai o turno ('w' ou 'b') diretamente do segundo campo da string FEN
-    // Exemplo de FEN: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1" -> o 'b' indica que a vez é das pretas
     const fenParts = fen.split(" ");
     if (fenParts.length > 1) {
       currentTurn = fenParts[1] === "b" ? "b" : "w";
@@ -142,6 +116,6 @@ export function analyzePositionAsync(
 
     stockfishWorker.postMessage("stop");
     stockfishWorker.postMessage(`position fen ${fen}`);
-    stockfishWorker.postMessage("go depth 14"); // Profundidade rápida e segura
+    stockfishWorker.postMessage("go depth 14");
   });
 }
