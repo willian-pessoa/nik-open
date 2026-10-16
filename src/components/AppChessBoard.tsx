@@ -17,7 +17,7 @@ import {
   initStockfish,
   type StockfishEvaluation,
 } from "../services/stockfishService";
-import type { ChessMove, LichessMove } from "../types";
+import type { ChessMove, LichessMove, Side } from "../types";
 import { PlayerInfo } from "./PlayerInfo";
 
 export interface IAppChessBoardProps {
@@ -25,9 +25,8 @@ export interface IAppChessBoardProps {
   playerRating: number;
   onOpeningChange: (openingName: string) => void;
   onMoveMade: (moves: ChessMove[]) => void;
+  cpuStartMove: string | null;
 }
-
-type Side = "w" | "b";
 
 // Perda (em centipawns) a partir da qual o lance é considerado ruim
 const BAD_MOVE_THRESHOLD_CP = 150;
@@ -50,6 +49,7 @@ export default function AppChessBoard({
   playerRating,
   onOpeningChange,
   onMoveMade,
+  cpuStartMove,
 }: IAppChessBoardProps) {
   // jogo de xadrez estável entre renders
   const [chessGame] = useState(() => new Chess());
@@ -63,17 +63,21 @@ export default function AppChessBoard({
   // state to manage click-to-move selection
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
 
+  const cpuOpenedRef = useRef(false);
+
   // Sempre guarda os valores mais recentes das props para uso dentro de
   // setTimeout/async (evita closures obsoletas)
   const latest = useRef({
     playerRating,
     playerOrientation,
+    cpuStartMove,
     onOpeningChange,
     onMoveMade,
   });
   latest.current = {
     playerRating,
     playerOrientation,
+    cpuStartMove,
     onOpeningChange,
     onMoveMade,
   };
@@ -173,6 +177,7 @@ export default function AppChessBoard({
         promotion: "q",
       });
       setChessPosition(chessGame.fen());
+      updateMovesHistory();
 
       // Avaliar Posicao
       setTimeout(() => {
@@ -297,17 +302,29 @@ export default function AppChessBoard({
 
     if (hasOpeningEnded(topMoves)) {
       handleOpeningFinished();
+      return;
     }
 
     let selectedMoveUci: string | null = null;
     let selectedMoveOpening: string = "";
 
-    if (topMoves.length > 0) {
+    // Lance inicial fixo da sessão: vale só para o 1º lance da CPU
+    const forcedStartMove =
+      chessGame.history().length <= 1 ? latest.current.cpuStartMove : null;
+
+    if (forcedStartMove) {
+      selectedMoveUci = forcedStartMove;
+      // O Explorer entra só para obter o nome da abertura desse lance
+      const match = topMoves.find(
+        (m) => normalizeLichessUci(m.uci) === forcedStartMove,
+      );
+      selectedMoveOpening = match?.opening?.name ?? "";
+    } else if (topMoves.length > 0) {
       const weightedMove = getRandomMoveByWeight(topMoves);
       if (weightedMove) {
         selectedMoveUci = normalizeLichessUci(weightedMove.uci);
         if (weightedMove.opening?.name) {
-          selectedMoveOpening = weightedMove.opening?.name;
+          selectedMoveOpening = weightedMove.opening.name;
         }
       }
     }
@@ -517,12 +534,21 @@ export default function AppChessBoard({
   };
 
   useEffect(() => {
+    if (cpuOpenedRef.current) return;
     if (
       chessGame.moveNumber() === 1 &&
       chessGame.turn() === "w" &&
       playerOrientation === "b"
     ) {
-      makeCpuMove("e2", "e4");
+      cpuOpenedRef.current = true;
+      const startMove = latest.current.cpuStartMove;
+
+      if (startMove) {
+        makeCpuMove(startMove.slice(0, 2), startMove.slice(2, 4));
+      } else {
+        // Automático: sorteia pelo banco do Lichess, como nos demais lances
+        void makeSmartCpuMove();
+      }
     }
   }, [playerOrientation]);
 

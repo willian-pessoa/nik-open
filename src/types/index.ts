@@ -14,3 +14,37 @@ export interface ChessMove {
 }
 
 export type Side = "w" | "b";
+
+export type SessionMode = "challenger" | "tutor";
+
+export interface PlayerSetting {
+  lichessToken: string | null;
+}
+
+export interface Match {
+  pgn: string;
+  playerSide: Side;
+  playerRating: number;
+  opening: string | null;
+  ratingEarned: number;
+}
+
+export interface Session {
+  id: string;
+  name: string;
+  createdAt: number;
+  playerSide: Side | null;
+  cpuStartMove: string | null;
+  startRating: number;
+  currentRating: number;
+  history: Match[];
+  mode: SessionMode;
+}
+
+export interface NewSessionInput {
+  name: string;
+  mode: SessionMode;
+  startRating: number;
+  playerSide: Side | null;
+  cpuStartMove: string | null;
+}
