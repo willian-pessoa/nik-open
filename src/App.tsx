@@ -7,6 +7,8 @@ import ManageSessions from "./components/ManageSessions";
 
 import type { ChessMove } from "./types";
 import { useSessions } from "./hooks/useSessions";
+import { calculateRating, type RatingChange } from "./utils/calculateRating";
+import OpeningFinishedModal from "./components/OpeningFinishedModal";
 
 const MOVES_PANEL_WIDTH = "18rem";
 const FALLBACK_RATING = 1200;
@@ -18,11 +20,19 @@ function App() {
     createSession,
     deleteSession,
     selectSession,
+    addMatch,
   } = useSessions();
 
   const [isSessionsOpen, setIsSessionsOpen] = useState(false);
   const [openingName, setOpeningName] = useState<string>("");
   const [moveHistory, setMoveHistory] = useState<ChessMove[]>([]);
+
+  // Contador de partidas: entra na key do tabuleiro para remontá-lo (nova partida)
+  const [matchNumber, setMatchNumber] = useState(0);
+  // Preenchido quando a abertura termina; mantém o modal aberto
+  const [finishedMatch, setFinishedMatch] = useState<{
+    ratingChange: RatingChange | null;
+  } | null>(null);
 
   // Ao trocar de sessão o tabuleiro é remontado (key), então zera também o
   // que o pai guarda da partida anterior
@@ -32,6 +42,46 @@ function App() {
     setPrevSessionId(activeSessionId);
     setOpeningName("");
     setMoveHistory([]);
+    setFinishedMatch(null);
+  }
+
+  const playerSide = activeSession?.playerSide ?? "w";
+
+  // A abertura acabou: calcula o rating, salva a partida na sessão e abre o modal
+  function handleOpeningFinished(pgn: string) {
+    if (!activeSession) {
+      setFinishedMatch({ ratingChange: null });
+      return;
+    }
+
+    // TODO: quando o tutor existir, passar aqui as ajudas usadas na partida
+    const helpsUsed = 0;
+
+    const ratingChange = calculateRating({
+      currentStreak: activeSession.currentStreak,
+      currentRating: activeSession.currentRating,
+      result: "win",
+      helpsUsed,
+    });
+
+    addMatch(activeSession.id, {
+      pgn,
+      playerSide,
+      playerRating: ratingChange.ratingBefore,
+      opening: openingName || null,
+      ratingEarned: ratingChange.delta,
+      result: ratingChange.result,
+      helpsUsed,
+    });
+
+    setFinishedMatch({ ratingChange });
+  }
+
+  function handleNewMatch() {
+    setFinishedMatch(null);
+    setOpeningName("");
+    setMoveHistory([]);
+    setMatchNumber((n) => n + 1);
   }
 
   return (
@@ -54,13 +104,14 @@ function App() {
       >
         <div className="flex items-stretch gap-2">
           <AppChessBoard
-            key={activeSessionId ?? "no-session"}
+            key={`${activeSessionId ?? "no-session"}-${matchNumber}`}
             // playerSide null = "escolher a cada partida" (ainda sem seletor): usa brancas
-            playerOrientation={activeSession?.playerSide ?? "w"}
+            playerOrientation={playerSide}
             playerRating={activeSession?.currentRating ?? FALLBACK_RATING}
             onOpeningChange={setOpeningName}
             onMoveMade={setMoveHistory}
             cpuStartMove={activeSession?.cpuStartMove ?? null}
+            onOpeningFinished={handleOpeningFinished}
           />
           <AppChessMoves openingName={openingName} moves={moveHistory} />
         </div>
@@ -74,6 +125,13 @@ function App() {
         onSelect={selectSession}
         onCreate={createSession}
         onDelete={deleteSession}
+      />
+
+      <OpeningFinishedModal
+        open={finishedMatch !== null}
+        openingName={openingName}
+        ratingChange={finishedMatch?.ratingChange ?? null}
+        onNewMatch={handleNewMatch}
       />
     </div>
   );

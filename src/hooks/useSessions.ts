@@ -45,6 +45,7 @@ export function useSessions() {
       cpuStartMove: input.playerSide ? input.cpuStartMove : null,
       history: [],
       mode: input.mode,
+      currentStreak: 0,
     };
     setSessions((prev) => [...prev, session]);
     setStoredActiveId(session.id); // a sessão recém-criada vira a ativa
@@ -62,7 +63,24 @@ export function useSessions() {
   // Será usado quando a partida terminar (desafio/tutor)
   const addMatch = useCallback((sessionId: string, match: Match) => {
     setSessions((prev) =>
-      prev.map((s) => (s.id === sessionId ? appendMatch(s, match) : s)),
+      prev.map((s) => {
+        if (s.id !== sessionId) return s;
+
+        const lastMatch = s.history[s.history.length - 1];
+
+        const currentStreak =
+          lastMatch && lastMatch.result === match.result
+            ? s.currentStreak + 1
+            : 1;
+
+        return appendMatch(
+          {
+            ...s,
+            currentStreak,
+          },
+          match,
+        );
+      }),
     );
   }, []);
 

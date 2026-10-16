@@ -8,7 +8,11 @@ import {
   type PieceHandlerArgs,
   type SquareHandlerArgs,
 } from "react-chessboard";
-import { getClosestRatingBuckets, getNextMove } from "../services/lichessApi";
+import {
+  getClosestRatingBuckets,
+  getNextMove,
+  type ExplorerResult,
+} from "../services/lichessApi";
 import { getRandomMoveByWeight } from "../utils/getRandomMoveByWeight";
 import { normalizeLichessUci } from "../utils/normalizeLichesUci";
 import {
@@ -25,11 +29,14 @@ export interface IAppChessBoardProps {
   playerRating: number;
   onOpeningChange: (openingName: string) => void;
   onMoveMade: (moves: ChessMove[]) => void;
+  onOpeningFinished: (pgn: string) => void;
   cpuStartMove: string | null;
 }
 
 // Perda (em centipawns) a partir da qual o lance é considerado ruim
 const BAD_MOVE_THRESHOLD_CP = 150;
+const MIN_GAMES_IN_BOOK = 50;
+const MIN_PLIES_BEFORE_OPENING_END = 2;
 
 const getBoardOrientation = (playerSide: Side) => {
   return playerSide === "w" ? "white" : "black";
@@ -50,6 +57,7 @@ export default function AppChessBoard({
   onOpeningChange,
   onMoveMade,
   cpuStartMove,
+  onOpeningFinished,
 }: IAppChessBoardProps) {
   // jogo de xadrez estável entre renders
   const [chessGame] = useState(() => new Chess());
@@ -64,6 +72,8 @@ export default function AppChessBoard({
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
 
   const cpuOpenedRef = useRef(false);
+  const openingFinishedRef = useRef(false);
+  const mountedRef = useRef(true);
 
   // Sempre guarda os valores mais recentes das props para uso dentro de
   // setTimeout/async (evita closures obsoletas)
@@ -73,6 +83,7 @@ export default function AppChessBoard({
     cpuStartMove,
     onOpeningChange,
     onMoveMade,
+    onOpeningFinished,
   });
   latest.current = {
     playerRating,
@@ -80,6 +91,7 @@ export default function AppChessBoard({
     cpuStartMove,
     onOpeningChange,
     onMoveMade,
+    onOpeningFinished,
   };
 
   // STOCKFISH (em refs para que closures assíncronas leiam sempre o valor atual)
@@ -114,16 +126,24 @@ export default function AppChessBoard({
     // caso no modo desafio, partida é encerrada, calcula novo rating, salva a partida no historico da sessao e aparece o botao para iniciar uma nova partida
   }
 
-  async function handleOpeningFinished() {
-    // TODO
-    // Essa função provalvemente vai vim do componente pai, por enquanto deixamos sua declaracao aqui
-    // tarefa vai ser disparar o modal de conclusao da abertura, calculo do rating, salvamento da partida no historico da sessao e o botao para iniciar uma nova rodada
+  // Trava o tabuleiro e avisa o pai (que calcula o rating, salva a partida e
+  // abre o modal). Só dispara uma vez por tabuleiro.
+  function handleOpeningFinished() {
+    if (openingFinishedRef.current || !mountedRef.current) return;
+    openingFinishedRef.current = true;
+
+    if (cpuTimeoutRef.current) clearTimeout(cpuTimeoutRef.current);
+    premovesRef.current = [];
+    setPremoves([]);
+    setSelectedSquare(null);
+
+    latest.current.onOpeningFinished(chessGame.pgn());
   }
 
-  function hasOpeningEnded(topMoves: LichessMove[]) {
-    //TODO
-    // verifica se abertura acababou baseaod na quantidade de partidas naquela posição
-    return false;
+  function hasOpeningEnded(explorer: ExplorerResult) {
+    if (explorer.failed) return false;
+    if (chessGame.history().length < MIN_PLIES_BEFORE_OPENING_END) return false;
+    return explorer.totalGames < MIN_GAMES_IN_BOOK;
   }
 
   // Função para atualizar e repassar os movimentos ao componente pai
@@ -196,6 +216,8 @@ export default function AppChessBoard({
     to: Square,
     isPremove = false,
   ): Promise<boolean> {
+    if (openingFinishedRef.current) return false;
+
     const side = latest.current.playerOrientation;
     const isMyTurn = chessGame.turn() === side;
 
@@ -295,12 +317,15 @@ export default function AppChessBoard({
     }
 
     // Consulta os 90% lances mais populares baseados no rating do jogador
-    const topMoves = await getNextMove(
+    const explorer = await getNextMove(
       latest.current.playerRating,
       chessGame.fen(),
     );
+    const topMoves = explorer.moves;
 
-    if (hasOpeningEnded(topMoves)) {
+    if (!mountedRef.current || openingFinishedRef.current) return;
+
+    if (hasOpeningEnded(explorer)) {
       handleOpeningFinished();
       return;
     }
@@ -412,6 +437,8 @@ export default function AppChessBoard({
 
   // handle square click for click-to-move
   function onSquareClick({ square, piece }: SquareHandlerArgs) {
+    if (openingFinishedRef.current) return;
+
     const side = latest.current.playerOrientation;
     // "piece" vem do tabuleiro renderizado (já inclui os premoves)
     const isOwnPiece = !!piece && piece.pieceType[0] === side;
@@ -565,9 +592,11 @@ export default function AppChessBoard({
     });
   }, []);
 
-  // Limpa o timer da CPU ao desmontar
+  // Marca o tabuleiro como montado e limpa o timer da CPU ao desmontar
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       if (cpuTimeoutRef.current) clearTimeout(cpuTimeoutRef.current);
     };
   }, []);

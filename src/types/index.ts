@@ -17,6 +17,8 @@ export type Side = "w" | "b";
 
 export type SessionMode = "challenger" | "tutor";
 
+export type MatchResult = "win" | "loss";
+
 export interface PlayerSetting {
   lichessToken: string | null;
 }
@@ -27,6 +29,8 @@ export interface Match {
   playerRating: number;
   opening: string | null;
   ratingEarned: number;
+  result: MatchResult;
+  helpsUsed?: number;
 }
 
 export interface Session {
@@ -39,6 +43,7 @@ export interface Session {
   currentRating: number;
   history: Match[];
   mode: SessionMode;
+  currentStreak: number;
 }
 
 export interface NewSessionInput {

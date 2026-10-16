@@ -2,7 +2,7 @@ import type { LichessMove } from "../types";
 
 const TOKEN = import.meta.env.VITE_ACCESS_TOKEN;
 
-interface ExplorerResponse {
+export interface ExplorerResponse {
   white: number;
   draws: number;
   black: number;
@@ -11,6 +11,15 @@ interface ExplorerResponse {
     eco: string;
     name: string;
   };
+}
+
+export interface ExplorerResult {
+  // Lances mais populares (cobrem até 90% das partidas da posição)
+  moves: LichessMove[];
+  // Total de partidas da posição no banco (usado para detectar o fim da abertura)
+  totalGames: number;
+  // true quando a consulta falhou (rede/API): não significa "sem partidas"
+  failed: boolean;
 }
 
 // Mapeia os 2 rating mais próximo aceito pelo Lichess
@@ -25,7 +34,7 @@ export const getClosestRatingBuckets = (rating: number): number[] => {
 export const getNextMove = async (
   averageRating: number,
   fen: string,
-): Promise<LichessMove[]> => {
+): Promise<ExplorerResult> => {
   const url = new URL("https://explorer.lichess.ovh/lichess");
 
   // Adiciona os filtros necessários
@@ -50,15 +59,19 @@ export const getNextMove = async (
 
     const data: ExplorerResponse = await response.json();
     const moves = data.moves || [];
+    const totalGames =
+      (data.white ?? 0) + (data.draws ?? 0) + (data.black ?? 0);
 
-    if (moves.length === 0) return [];
+    if (moves.length === 0) return { moves: [], totalGames, failed: false };
 
     // Calcula o total de partidas somando todas as opções de lances
     const totalGamesAllMoves = moves.reduce((acc, move) => {
       return acc + move.white + move.draws + move.black;
     }, 0);
 
-    if (totalGamesAllMoves === 0) return [];
+    if (totalGamesAllMoves === 0) {
+      return { moves: [], totalGames, failed: false };
+    }
 
     // Seleciona os lances mais jogados que cobrem até 90% do volume total de partidas
     let accumulatedGames = 0;
@@ -74,9 +87,9 @@ export const getNextMove = async (
       }
     }
 
-    return topMoves90Percent;
+    return { moves: topMoves90Percent, totalGames, failed: false };
   } catch (error) {
     console.error("Erro ao consultar o Lichess Explorer:", error);
-    return [];
+    return { moves: [], totalGames: 0, failed: true };
   }
 };
