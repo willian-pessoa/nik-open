@@ -1,5 +1,5 @@
 import { Chess, type Square } from "chess.js";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Chessboard,
   fenStringToPositionObject,
@@ -8,7 +8,7 @@ import {
   type PieceHandlerArgs,
   type SquareHandlerArgs,
 } from "react-chessboard";
-import { getNextMove } from "../services/lichessApi";
+import { getClosestRatingBuckets, getNextMove } from "../services/lichessApi";
 import { getRandomMoveByWeight } from "../utils/getRandomMoveByWeight";
 import { normalizeLichessUci } from "../utils/normalizeLichesUci";
 import {
@@ -18,6 +18,7 @@ import {
   type StockfishEvaluation,
 } from "../services/stockfishService";
 import type { ChessMove, LichessMove } from "../types";
+import { PlayerInfo } from "./PlayerInfo";
 
 export interface IAppChessBoardProps {
   playerOrientation?: "w" | "b";
@@ -85,6 +86,16 @@ export default function AppChessBoard({
   // Controle de timers / execução de premove
   const cpuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isExecutingPremoveRef = useRef(false);
+
+  // Rating da CPU: faixa formada pelos 2 buckets do Lichess mais próximos do
+  // rating atual do jogador (ordenados do menor para o maior)
+  const cpuRatingLabel = useMemo(() => {
+    const [low, high] = [...getClosestRatingBuckets(playerRating)].sort(
+      (a, b) => a - b,
+    );
+    return low === high ? `${low}` : `${low} – ${high}`;
+  }, [playerRating]);
+  const cpuSide: Side = playerOrientation === "w" ? "b" : "w";
 
   async function handleBadMoveDetected(
     from: string,
@@ -536,11 +547,36 @@ export default function AppChessBoard({
   }, []);
 
   return (
-    <div className="p-2 h-full flex-1 min-w-0 min-h-0 overflow-hidden">
-      <div className="w-full h-full flex items-center justify-center min-w-0 min-h-0">
-        <div className="w-auto h-auto max-w-full max-h-full aspect-square flex items-center justify-center">
-          <Chessboard options={chessboardOptions} />
-        </div>
+    // Card único (header + tabuleiro), dimensionado em função do container
+    // definido no App (unidades cqw / cqh).
+    // Chrome do card: padding 8px*2 + borda 1px*2 = 18px na largura e, na
+    // altura, 18px + header (h-14 = 56px) + gap (8px) = 82px.
+    // O tabuleiro é quadrado, então a largura do card é o menor entre:
+    //  - largura disponível - painel lateral (--side-panel-w) - gap (0.5rem)
+    //  - altura disponível - 82px + 18px = 64px
+    <div
+      className="flex shrink-0 flex-col gap-2 rounded-xl border border-slate-800 bg-slate-900 p-2"
+      style={{
+        width:
+          "min(calc(100cqw - var(--side-panel-w, 0px) - 0.5rem), calc(100cqh - 64px))",
+      }}
+    >
+      {/* Header: rating do jogador x rating da CPU */}
+      <header className="flex h-14 items-center justify-between gap-3 px-2">
+        <PlayerInfo
+          name="Você"
+          side={playerOrientation}
+          rating={String(playerRating)}
+          isPlayer
+        />
+        <span className="text-xs font-bold tracking-widest text-rose-500">
+          VS
+        </span>
+        <PlayerInfo name="CPU" side={cpuSide} rating={cpuRatingLabel} reverse />
+      </header>
+
+      <div className="aspect-square w-full overflow-hidden rounded-md">
+        <Chessboard options={chessboardOptions} />
       </div>
     </div>
   );

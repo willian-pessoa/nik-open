@@ -13,12 +13,13 @@ interface ExplorerResponse {
   };
 }
 
-// Mapeia o rating fornecido para o bucket mais próximo aceito pelo Lichess
-const getClosestRatingBucket = (rating: number): number => {
+// Mapeia os 2 rating mais próximo aceito pelo Lichess
+export const getClosestRatingBuckets = (rating: number): number[] => {
   const buckets = [0, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500];
-  return buckets.reduce((prev, curr) =>
-    Math.abs(curr - rating) < Math.abs(prev - rating) ? curr : prev,
-  );
+
+  return buckets
+    .sort((a, b) => Math.abs(a - rating) - Math.abs(b - rating))
+    .slice(0, 2);
 };
 
 export const getNextMove = async (
@@ -28,7 +29,7 @@ export const getNextMove = async (
   const url = new URL("https://explorer.lichess.ovh/lichess");
 
   // Adiciona os filtros necessários
-  const ratingBucket = getClosestRatingBucket(averageRating);
+  const ratingBucket = getClosestRatingBuckets(averageRating);
   url.searchParams.append("ratings[]", ratingBucket.toString());
 
   if (fen && fen.trim() !== "") {

@@ -12,3 +12,5 @@ export interface ChessMove {
   move: string;
   number: number;
 }
+
+export type Side = "w" | "b";
