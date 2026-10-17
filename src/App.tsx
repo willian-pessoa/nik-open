@@ -15,9 +15,10 @@ import BadMoveModal from "./components/BadMoveModal";
 import { pickRandomSide } from "./utils/pickRandomSide";
 import { Layers, Plus } from "lucide-react";
 import HistoryModal from "./components/HistoryModal";
+import SettingsModal from "./components/SettingsModal";
+import { useSettings } from "./hooks/useSettings";
 
 const MOVES_PANEL_WIDTH = "18rem";
-const FALLBACK_RATING = 1200;
 
 function App() {
   const {
@@ -31,6 +32,8 @@ function App() {
 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSessionsOpen, setIsSessionsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { settings, updateSettings } = useSettings();
   const [openingName, setOpeningName] = useState<string>("");
   const [moveHistory, setMoveHistory] = useState<ChessMove[]>([]);
   const [randomSide, setRandomSide] = useState<Side>(pickRandomSide());
@@ -160,9 +163,7 @@ function App() {
     <div className="flex flex-col bg-slate-950 h-screen w-screen text-slate-50 text-lg overflow-hidden">
       <AppHeader
         sessionName={activeSession?.name ?? "Sem sessão"}
-        onOpenSettings={() => {
-          // TODO: abrir o modal de configurações da aplicação
-        }}
+        onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenSessions={() => setIsSessionsOpen(true)}
         onOpenHistory={() => setIsHistoryOpen(true)}
       />
@@ -226,6 +227,8 @@ function App() {
         info={badMove}
         onRetry={handleRetry}
         onEnd={handleEndMatch}
+        openingName={openingName}
+        geminiApiKey={settings.geminiApiKey}
       />
 
       <OpeningFinishedModal
@@ -242,6 +245,13 @@ function App() {
         sessionName={activeSession?.name ?? "Sem sessão"}
         history={activeSession?.history ?? []}
         onClose={() => setIsHistoryOpen(false)}
+      />
+
+      <SettingsModal
+        open={isSettingsOpen}
+        settings={settings}
+        onClose={() => setIsSettingsOpen(false)}
+        onSave={updateSettings}
       />
     </div>
   );

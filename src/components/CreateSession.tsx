@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import type { Side } from "../types";
 import type { NewSessionInput, SessionMode } from "../types";
@@ -59,7 +59,7 @@ function CreateSessionForm({
     setCpuStartMove(AUTO_MOVE);
   }
 
-  function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: React.SubmitEvent) {
     e.preventDefault();
 
     const trimmed = name.trim();

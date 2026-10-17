@@ -5,6 +5,7 @@ import AppModal from "./AppModal";
 import MoveSuggestionsList from "./MoveSuggestionList";
 import { useEffect } from "react";
 import { playSound } from "../utils/playSound";
+import MoveExplanation from "./MoveExplanation";
 
 export interface IBadMoveModalProps {
   open: boolean;
@@ -13,6 +14,8 @@ export interface IBadMoveModalProps {
   onRetry: () => void;
   // Encerra a partida (conta como derrota)
   onEnd: () => void;
+  openingName: string;
+  geminiApiKey: string | null;
 }
 
 export default function BadMoveModal({
@@ -20,6 +23,8 @@ export default function BadMoveModal({
   info,
   onRetry,
   onEnd,
+  openingName,
+  geminiApiKey,
 }: IBadMoveModalProps) {
   const isOpen = open && info !== null;
 
@@ -34,7 +39,7 @@ export default function BadMoveModal({
       onClose={onRetry}
       closeOnEscape={false}
       closeOnBackdropClick={false}
-      widthClass="max-w-md"
+      widthClass="max-w-2xl"
     >
       {info && (
         <div className="flex flex-col gap-4">
@@ -55,6 +60,12 @@ export default function BadMoveModal({
               peões. Veja as melhores opções:
             </p>
           </div>
+
+          <MoveExplanation
+            info={info}
+            openingName={openingName}
+            geminiApiKey={geminiApiKey}
+          />
 
           <section aria-label="Melhores lances">
             <p className="mb-1 text-sm uppercase tracking-widest text-slate-500">

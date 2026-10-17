@@ -1,6 +1,5 @@
 import type { LichessMove } from "../types";
-
-const TOKEN = import.meta.env.VITE_ACCESS_TOKEN;
+import { loadSettings } from "./settingsStorage";
 
 export interface ExplorerResponse {
   white: number;
@@ -47,8 +46,10 @@ export const getNextMove = async (
 
   const headers: HeadersInit = {};
 
-  if (TOKEN) {
-    headers["Authorization"] = `Bearer ${TOKEN}`;
+  const token =
+    loadSettings().lichessToken ?? import.meta.env.VITE_ACCESS_TOKEN;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   try {

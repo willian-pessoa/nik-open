@@ -156,6 +156,7 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
       lossCp: number,
       scoreBefore: number,
       bestMovesBefore: StockfishEvaluation[],
+      bestReplyUci?: string,
     ) {
       badMovePendingRef.current = true;
       if (cpuTimeoutRef.current) clearTimeout(cpuTimeoutRef.current);
@@ -180,11 +181,16 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
         if (suggestions.length === MAX_SUGGESTIONS) break;
       }
 
+      const bestReply = bestReplyUci
+        ? uciToSan(chessGame.fen(), bestReplyUci)
+        : null;
+
       latest.current.onBadMove({
         pgn: chessGame.pgn(),
         playedSan,
         lossCp,
         suggestions,
+        bestReply,
       });
     }
 
@@ -369,6 +375,7 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
                 perdaCentipawns,
                 scoreBeforeMove,
                 bestMovesBefore,
+                evaluations[0]?.move,
               );
               return true;
             }

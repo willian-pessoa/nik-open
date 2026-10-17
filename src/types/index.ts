@@ -66,4 +66,10 @@ export interface BadMoveInfo {
   playedSan: string;
   lossCp: number;
   suggestions: MoveSuggestion[];
+  bestReply?: string | null;
+}
+
+export interface PlayerSetting {
+  lichessToken: string | null;
+  geminiApiKey: string | null;
 }
