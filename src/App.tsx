@@ -14,6 +14,7 @@ import OpeningFinishedModal from "./components/OpeningFinishedModal";
 import BadMoveModal from "./components/BadMoveModal";
 import { pickRandomSide } from "./utils/pickRandomSide";
 import { Layers, Plus } from "lucide-react";
+import HistoryModal from "./components/HistoryModal";
 
 const MOVES_PANEL_WIDTH = "18rem";
 const FALLBACK_RATING = 1200;
@@ -28,6 +29,7 @@ function App() {
     addMatch,
   } = useSessions();
 
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSessionsOpen, setIsSessionsOpen] = useState(false);
   const [openingName, setOpeningName] = useState<string>("");
   const [moveHistory, setMoveHistory] = useState<ChessMove[]>([]);
@@ -91,6 +93,7 @@ function App() {
       ratingEarned: ratingChange.delta,
       result: ratingChange.result,
       helpsUsed,
+      playedAt: Date.now(),
     });
 
     setFinishedMatch({ reason: "mistake", ratingChange, badMove: info });
@@ -137,6 +140,7 @@ function App() {
       ratingEarned: ratingChange.delta,
       result: ratingChange.result,
       helpsUsed,
+      playedAt: Date.now(),
     });
 
     setFinishedMatch({ reason: "opening", ratingChange });
@@ -160,9 +164,7 @@ function App() {
           // TODO: abrir o modal de configurações da aplicação
         }}
         onOpenSessions={() => setIsSessionsOpen(true)}
-        onOpenHistory={() => {
-          // TODO: abrir o modal com o histórico de partidas da sessão atual
-        }}
+        onOpenHistory={() => setIsHistoryOpen(true)}
       />
       {/* Área disponível: centraliza o conjunto tabuleiro + lances e serve de
           container para o dimensionamento do tabuleiro (cqw / cqh) */}
@@ -233,6 +235,13 @@ function App() {
         badMove={finishedMatch?.badMove ?? null}
         ratingChange={finishedMatch?.ratingChange ?? null}
         onNewMatch={handleNewMatch}
+      />
+
+      <HistoryModal
+        open={isHistoryOpen}
+        sessionName={activeSession?.name ?? "Sem sessão"}
+        history={activeSession?.history ?? []}
+        onClose={() => setIsHistoryOpen(false)}
       />
     </div>
   );

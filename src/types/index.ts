@@ -31,6 +31,7 @@ export interface Match {
   ratingEarned: number;
   result: MatchResult;
   helpsUsed?: number;
+  playedAt: number;
 }
 
 export interface Session {
