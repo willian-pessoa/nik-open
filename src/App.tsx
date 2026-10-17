@@ -7,11 +7,13 @@ import AppChessMoves from "./components/AppChessMoves";
 import AppHeader from "./components/AppHeader";
 import ManageSessions from "./components/ManageSessions";
 
-import type { BadMoveInfo, ChessMove } from "./types";
+import type { BadMoveInfo, ChessMove, Side } from "./types";
 import { useSessions } from "./hooks/useSessions";
 import { calculateRating, type RatingChange } from "./utils/calculateRating";
 import OpeningFinishedModal from "./components/OpeningFinishedModal";
 import BadMoveModal from "./components/BadMoveModal";
+import { pickRandomSide } from "./utils/pickRandomSide";
+import { Layers, Plus } from "lucide-react";
 
 const MOVES_PANEL_WIDTH = "18rem";
 const FALLBACK_RATING = 1200;
@@ -29,6 +31,7 @@ function App() {
   const [isSessionsOpen, setIsSessionsOpen] = useState(false);
   const [openingName, setOpeningName] = useState<string>("");
   const [moveHistory, setMoveHistory] = useState<ChessMove[]>([]);
+  const [randomSide, setRandomSide] = useState<Side>(pickRandomSide());
 
   // Contador de partidas: entra na key do tabuleiro para remontá-lo (nova partida)
   const [matchNumber, setMatchNumber] = useState(0);
@@ -55,9 +58,10 @@ function App() {
     setFinishedMatch(null);
     setBadMove(null);
     setHelpsUsed(0);
+    setRandomSide(pickRandomSide());
   }
 
-  const playerSide = activeSession?.playerSide ?? "w";
+  const playerSide: Side = activeSession?.playerSide ?? randomSide;
 
   function finishMatchAsLoss(info: BadMoveInfo) {
     boardRef.current?.lock();
@@ -145,6 +149,7 @@ function App() {
     setOpeningName("");
     setMoveHistory([]);
     setMatchNumber((n) => n + 1);
+    setRandomSide(pickRandomSide());
   }
 
   return (
@@ -165,21 +170,43 @@ function App() {
         className="flex flex-1 min-h-0 items-center justify-center p-2 @container-size"
         style={{ "--side-panel-w": MOVES_PANEL_WIDTH } as CSSProperties}
       >
-        <div className="flex items-stretch gap-2">
-          <AppChessBoard
-            ref={boardRef}
-            key={`${activeSessionId ?? "no-session"}-${matchNumber}`}
-            // playerSide null = "escolher a cada partida" (ainda sem seletor): usa brancas
-            playerOrientation={playerSide}
-            playerRating={activeSession?.currentRating ?? FALLBACK_RATING}
-            onOpeningChange={setOpeningName}
-            onMoveMade={setMoveHistory}
-            cpuStartMove={activeSession?.cpuStartMove ?? null}
-            onOpeningFinished={handleOpeningFinished}
-            onBadMove={handleBadMove}
-          />
-          <AppChessMoves openingName={openingName} moves={moveHistory} />
-        </div>
+        {activeSession ? (
+          <div className="flex items-stretch gap-2">
+            <AppChessBoard
+              ref={boardRef}
+              key={`${activeSession.id}-${matchNumber}`}
+              playerOrientation={playerSide}
+              playerRating={activeSession.currentRating}
+              onOpeningChange={setOpeningName}
+              onMoveMade={setMoveHistory}
+              cpuStartMove={activeSession.cpuStartMove}
+              onOpeningFinished={handleOpeningFinished}
+              onBadMove={handleBadMove}
+            />
+            <AppChessMoves openingName={openingName} moves={moveHistory} />
+          </div>
+        ) : (
+          <div className="flex max-w-sm flex-col items-center gap-4 rounded-xl border border-dashed border-slate-800 bg-slate-900 p-8 text-center">
+            <Layers size={32} className="text-rose-400" aria-hidden />
+            <div>
+              <p className="text-lg font-semibold text-slate-100">
+                Nenhuma sessão ativa
+              </p>
+              <p className="mt-1 text-base text-slate-400">
+                Crie ou selecione uma sessão para começar a treinar suas
+                aberturas.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsSessionsOpen(true)}
+              className="flex cursor-pointer items-center gap-2 rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+            >
+              <Plus size={16} aria-hidden />
+              Gerenciar sessões
+            </button>
+          </div>
+        )}
       </div>
 
       <ManageSessions
