@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { Match } from "../types";
 import { getMatchResult } from "../utils/calculateRating";
 import AppModal from "./AppModal";
@@ -53,7 +52,7 @@ export default function HistoryModal({
             return (
               <li
                 key={index}
-                className="flex items-center gap-4 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+                className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-2 py-2 sm:gap-4 sm:px-3"
               >
                 <span className="w-8 shrink-0 text-right text-sm tabular-nums text-slate-500">
                   #{index + 1}
@@ -111,10 +110,11 @@ export default function HistoryModal({
                     href={analysisUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-rose-500/60 hover:text-rose-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                    aria-label="Analisar no Lichess"
+                    className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-700 px-2.5 py-1.5 text-sm text-slate-300 transition-colors hover:border-rose-500/60 hover:text-rose-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 sm:px-3"
                   >
                     <ExternalLink size={16} aria-hidden />
-                    Analisar
+                    <span className="hidden sm:inline">Analisar</span>
                   </a>
                 ) : (
                   <span className="shrink-0 text-sm italic text-slate-600">

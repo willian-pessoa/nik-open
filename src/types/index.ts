@@ -61,10 +61,14 @@ export interface MoveSuggestion {
   isMate: boolean;
 }
 
+export type BadMoveKind = "mistake" | "missed" | "drift";
+
 export interface BadMoveInfo {
   pgn: string;
   playedSan: string;
   lossCp: number;
+  kind: BadMoveKind;
+  evalAfterCp: number;
   suggestions: MoveSuggestion[];
   bestReply?: string | null;
 }

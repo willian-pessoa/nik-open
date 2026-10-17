@@ -72,26 +72,31 @@ export function initStockfish(callback: StockfishCallback) {
       }
 
       const validEvaluations = currentEvaluations.filter(Boolean);
+      currentEvaluations = [];
 
-      if (currentResolve && validEvaluations.length > 0) {
+      if (currentResolve) {
         // Resolve mesmo sem avaliações (ex.: posição sem lances legais), para a
         // promessa não ficar pendente para sempre
-        if (currentResolve) {
-          currentResolve(validEvaluations, currentTurn);
-          currentResolve = null;
-        }
+        const resolve = currentResolve;
+        currentResolve = null;
+        resolve(validEvaluations, currentTurn);
+      }
 
-        if (onEvaluationCallback && validEvaluations.length > 0) {
-          onEvaluationCallback(validEvaluations, currentTurn);
-        }
-
-        currentEvaluations = [];
+      if (onEvaluationCallback && validEvaluations.length > 0) {
+        onEvaluationCallback(validEvaluations, currentTurn);
       }
     }
   };
 }
 
-function startSearch(worker: Worker, fen: string) {
+const SEARCH_DEPTH = 12;
+const DEFAULT_MULTI_PV = 3;
+
+function startSearch(
+  worker: Worker,
+  fen: string,
+  multiPv: number = DEFAULT_MULTI_PV,
+) {
   const fenParts = fen.split(" ");
   if (fenParts.length > 1) {
     currentTurn = fenParts[1] === "b" ? "b" : "w";
@@ -99,8 +104,9 @@ function startSearch(worker: Worker, fen: string) {
 
   pendingSearches++;
   worker.postMessage("stop");
+  worker.postMessage(`setoption name MultiPV value ${multiPv}`);
   worker.postMessage(`position fen ${fen}`);
-  worker.postMessage("go depth 14");
+  worker.postMessage(`go depth ${SEARCH_DEPTH}`);
 }
 
 export function evaluatePosition(fen: string) {
@@ -110,6 +116,7 @@ export function evaluatePosition(fen: string) {
 
 export function analyzePositionAsync(
   fen: string,
+  multiPv?: number,
 ): Promise<StockfishEvaluation[]> {
   return new Promise((resolve) => {
     if (!stockfishWorker) {
@@ -126,6 +133,6 @@ export function analyzePositionAsync(
       resolve(evaluations);
     };
 
-    startSearch(stockfishWorker, fen);
+    startSearch(stockfishWorker, fen, multiPv);
   });
 }

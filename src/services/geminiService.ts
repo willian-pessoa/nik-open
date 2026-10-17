@@ -69,10 +69,7 @@ function buildPrompt(info: BadMoveInfo, openingName: string): string {
     lines.push(`Partida até o erro (PGN): ${info.pgn}`);
   }
 
-  lines.push(
-    `Lance jogado: ${info.playedSan}`,
-    `Esse lance piorou a posição do jogador em cerca de ${formatLoss(info.lossCp)} peões, segundo o Stockfish.`,
-  );
+  lines.push(`Lance jogado: ${info.playedSan}`, describeImpact(info));
 
   if (info.bestReply) {
     lines.push(
@@ -175,4 +172,24 @@ export async function explainBadMove({
   }
 
   return text;
+}
+
+function describeImpact(info: BadMoveInfo): string {
+  const decisive = info.lossCp >= 2000;
+  const size = decisive
+    ? "uma diferença decisiva (envolve xeque-mate forçado)"
+    : `cerca de ${formatLoss(info.lossCp)} peões`;
+
+  if (info.kind === "drift") {
+    const evalText = formatEval({
+      san: info.playedSan,
+      score: info.evalAfterCp,
+      isMate: false,
+    });
+    return `Esse lance deixou a posição do jogador pior do que o esperado numa abertura (avaliação do Stockfish do ponto de vista do jogador: ${evalText}).`;
+  }
+  if (info.kind === "missed") {
+    return `Esse lance deixou escapar ${size} de vantagem que o jogador tinha, segundo o Stockfish.`;
+  }
+  return `Esse lance piorou a posição do jogador em ${size}, segundo o Stockfish.`;
 }

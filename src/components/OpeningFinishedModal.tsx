@@ -2,10 +2,10 @@ import { AlertTriangle, Flag, RotateCcw } from "lucide-react";
 import type { RatingChange } from "../utils/calculateRating";
 import AppModal from "./AppModal";
 import type { BadMoveInfo } from "../types";
-import { formatLoss } from "../utils/formatEval";
 import MoveSuggestionsList from "./MoveSuggestionList";
 import { useEffect } from "react";
 import { playSound } from "../utils/playSound";
+import BadMoveSummary from "./BadMoveSummary";
 
 export interface IOpeningFinishedModalProps {
   open: boolean;
@@ -52,17 +52,7 @@ export default function OpeningFinishedModal({
                 className="mt-1 shrink-0 text-amber-400"
                 aria-hidden
               />
-              <p className="text-base text-slate-300">
-                Você jogou{" "}
-                <span className="font-semibold text-rose-400">
-                  {badMove?.playedSan}
-                </span>
-                , que piorou a posição em cerca de{" "}
-                <span className="font-semibold tabular-nums text-slate-100">
-                  {formatLoss(badMove?.lossCp ?? 0)}
-                </span>{" "}
-                peões.
-              </p>
+              {badMove && <BadMoveSummary info={badMove} />}
             </div>
             <section aria-label="Melhores lances">
               <p className="mb-1 text-sm uppercase tracking-widest text-slate-500">

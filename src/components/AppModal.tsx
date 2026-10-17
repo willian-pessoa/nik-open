@@ -40,7 +40,7 @@ export default function AppModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-2 backdrop-blur-sm sm:p-4"
       onClick={closeOnBackdropClick ? onClose : undefined}
     >
       <div
@@ -58,13 +58,15 @@ export default function AppModal({
             type="button"
             aria-label="Fechar"
             onClick={onClose}
-            className="cursor-pointer rounded-md p-1 text-slate-400 transition-colors hover:text-rose-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+            className="cursor-pointer rounded-md p-1.5 text-slate-400 transition-colors hover:text-rose-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
           >
             <X size={20} aria-hidden />
           </button>
         </div>
 
-        <div className="min-h-0 overflow-y-auto p-4">{children}</div>
+        <div className="min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-4">
+          {children}
+        </div>
       </div>
     </div>
   );

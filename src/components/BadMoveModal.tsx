@@ -6,6 +6,7 @@ import MoveSuggestionsList from "./MoveSuggestionList";
 import { useEffect } from "react";
 import { playSound } from "../utils/playSound";
 import MoveExplanation from "./MoveExplanation";
+import BadMoveSummary from "./BadMoveSummary";
 
 export interface IBadMoveModalProps {
   open: boolean;
@@ -49,16 +50,7 @@ export default function BadMoveModal({
               className="mt-1 shrink-0 text-amber-400"
               aria-hidden
             />
-            <p className="text-base text-slate-300">
-              <span className="font-semibold text-rose-400">
-                {info.playedSan}
-              </span>{" "}
-              piorou sua posição em cerca de{" "}
-              <span className="font-semibold tabular-nums text-slate-100">
-                {formatLoss(info.lossCp)}
-              </span>{" "}
-              peões. Veja as melhores opções:
-            </p>
+            <BadMoveSummary info={info} />
           </div>
 
           <MoveExplanation
@@ -74,11 +66,11 @@ export default function BadMoveModal({
             <MoveSuggestionsList suggestions={info.suggestions} />
           </section>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={onEnd}
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition-colors hover:border-rose-500/60 hover:text-rose-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition-colors hover:border-rose-500/60 hover:text-rose-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
             >
               <Flag size={16} aria-hidden />
               Encerrar partida
@@ -87,7 +79,7 @@ export default function BadMoveModal({
               type="button"
               onClick={onRetry}
               autoFocus
-              className="flex cursor-pointer items-center gap-2 rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
             >
               <Undo2 size={16} aria-hidden />
               Tentar novamente

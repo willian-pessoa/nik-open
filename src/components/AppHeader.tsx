@@ -15,15 +15,15 @@ export default function AppHeader({
   onOpenHistory,
 }: IAppHeaderProps) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-slate-800 bg-slate-900 px-3">
+    <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-800 bg-slate-900 px-3 sm:gap-4">
       {/* Logo + sessão atual */}
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <img
           src="/logo.png"
           alt="Logo"
           className="h-9 w-9 shrink-0 rounded-lg object-contain"
         />
-        <div className="h-6 w-px bg-slate-700" aria-hidden />
+        <div className="h-6 w-px shrink-0 bg-slate-700" aria-hidden />
         <div className="min-w-0">
           <p className="text-[10px] uppercase leading-none tracking-widest text-slate-500">
             Sessão
@@ -38,7 +38,7 @@ export default function AppHeader({
       </div>
 
       {/* Ações */}
-      <nav className="flex items-center gap-2">
+      <nav className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         {/* Histórico de partidas da sessão atual */}
         <AppIconButton label="Histórico de partidas" onClick={onOpenHistory}>
           <History size={24} aria-hidden />

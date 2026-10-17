@@ -28,11 +28,19 @@ import {
   initStockfish,
   type StockfishEvaluation,
 } from "../services/stockfishService";
-import type { BadMoveInfo, ChessMove, MoveSuggestion, Side } from "../types";
+import type {
+  BadMoveInfo,
+  ChessMove,
+  MoveSuggestion,
+  SessionMode,
+  Side,
+} from "../types";
 import { PlayerInfo } from "./PlayerInfo";
 import { uciToSan } from "../utils/uciToSan";
 import { toCentipawns } from "../utils/formatEval";
 import { playSound } from "../utils/playSound";
+import { X } from "lucide-react";
+import { assessPlayerMove, type MoveAssessment } from "../utils/assessMove";
 
 export interface IAppChessBoardProps {
   playerOrientation?: "w" | "b";
@@ -42,6 +50,7 @@ export interface IAppChessBoardProps {
   onOpeningFinished: (pgn: string) => void;
   cpuStartMove: string | null;
   onBadMove: (info: BadMoveInfo) => void;
+  mode: SessionMode;
 }
 
 export interface AppChessBoardHandle {
@@ -84,6 +93,7 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
       cpuStartMove,
       onOpeningFinished,
       onBadMove,
+      mode,
     },
     ref,
   ) {
@@ -118,6 +128,7 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
       onMoveMade,
       onOpeningFinished,
       onBadMove,
+      mode,
     });
     latest.current = {
       playerRating,
@@ -127,6 +138,7 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
       onMoveMade,
       onOpeningFinished,
       onBadMove,
+      mode,
     };
 
     // STOCKFISH (em refs para que closures assíncronas leiam sempre o valor atual)
@@ -153,7 +165,7 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
     function handleBadMoveDetected(
       fenBefore: string,
       playedSan: string,
-      lossCp: number,
+      assessment: MoveAssessment,
       scoreBefore: number,
       bestMovesBefore: StockfishEvaluation[],
       bestReplyUci?: string,
@@ -188,7 +200,9 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
       latest.current.onBadMove({
         pgn: chessGame.pgn(),
         playedSan,
-        lossCp,
+        lossCp: assessment.lossCp,
+        kind: assessment.kind,
+        evalAfterCp: assessment.evalAfterCp,
         suggestions,
         bestReply,
       });
@@ -363,16 +377,21 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
           if (!mountedRef.current || openingFinishedRef.current) return true;
 
           if (evaluations.length > 0) {
-            const melhorScoreDaCpu = toCentipawns(evaluations[0]);
-            const scoreRealDoJogadorAposCpu = -melhorScoreDaCpu;
-            const perdaCentipawns = scoreBeforeMove - scoreRealDoJogadorAposCpu;
+            // A melhor resposta da CPU vem do ponto de vista dela: inverte
+            const scoreAfterMove = -toCentipawns(evaluations[0]);
 
-            if (perdaCentipawns >= BAD_MOVE_THRESHOLD_CP) {
+            const assessment = assessPlayerMove({
+              scoreBeforeCp: scoreBeforeMove,
+              scoreAfterCp: scoreAfterMove,
+              mode: latest.current.mode,
+            });
+
+            if (assessment) {
               // Não agenda o lance da CPU: o pai decide se encerra ou desfaz
               handleBadMoveDetected(
                 fenBefore,
                 playedSan,
-                perdaCentipawns,
+                assessment,
                 scoreBeforeMove,
                 bestMovesBefore,
                 evaluations[0]?.move,
@@ -385,7 +404,7 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
         }
 
         if (cpuTimeoutRef.current) clearTimeout(cpuTimeoutRef.current);
-        cpuTimeoutRef.current = setTimeout(makeSmartCpuMove, 500);
+        cpuTimeoutRef.current = setTimeout(makeSmartCpuMove, 10);
         return true;
       }
 
@@ -582,16 +601,14 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
       setSelectedSquare(isOwnPiece ? (square as Square) : null);
     }
 
-    // clear all premoves and selection on right click
-    function onSquareRightClick() {
+    // Limpa premoves e seleção (clique direito no desktop, botão no celular)
+    function clearPremoves() {
       premovesRef.current = [];
-      setPremoves([...premovesRef.current]);
+      setPremoves([]);
       setSelectedSquare(null);
 
-      // disable animations while clearing premoves
+      // desliga as animações enquanto limpa e religa logo depois
       setShowAnimations(false);
-
-      // re-enable animations after a short delay
       setTimeout(() => {
         setShowAnimations(true);
       }, 50);
@@ -668,7 +685,7 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
     const chessboardOptions: ChessboardOptions = {
       canDragPiece,
       onSquareClick,
-      onSquareRightClick,
+      onSquareRightClick: clearPremoves,
       position,
       showAnimations,
       squareStyles,
@@ -722,18 +739,17 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
     }, []);
 
     return (
-      // Card único (header + tabuleiro), dimensionado em função do container
-      // definido no App (unidades cqw / cqh).
+      // Card único (header + tabuleiro), dimensionado pelo container do App.
       // Chrome do card: padding 8px*2 + borda 1px*2 = 18px na largura e, na
-      // altura, 18px + header (h-14 = 56px) + gap (8px) = 82px.
-      // O tabuleiro é quadrado, então a largura do card é o menor entre:
-      //  - largura disponível - painel lateral (--side-panel-w) - gap (0.5rem)
-      //  - altura disponível - 82px + 18px = 64px
+      // altura, 18px + header (56px) + gap (8px) = 82px. Como o tabuleiro é
+      // quadrado, a altura do card é largura + 64px. Logo, a largura é o menor entre:
+      //  - largura disponível - painel lateral (--side-panel-w, só em md+)
+      //  - altura disponível - 64px - painel inferior (--bottom-panel-h, só no celular)
       <div
         className="flex shrink-0 flex-col gap-2 rounded-xl border border-slate-800 bg-slate-900 p-2"
         style={{
           width:
-            "min(calc(100cqw - var(--side-panel-w, 0px) - 0.5rem), calc(100cqh - 64px))",
+            "min(calc(100cqw - var(--side-panel-w, 0px)), calc(100cqh - 64px - var(--bottom-panel-h, 0px)))",
         }}
       >
         {/* Header: rating do jogador x rating da CPU */}
@@ -744,9 +760,22 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
             rating={String(playerRating)}
             isPlayer
           />
-          <span className="text-xs font-bold tracking-widest text-rose-500">
-            VS
-          </span>
+          {premoves.length > 0 ? (
+            <button
+              type="button"
+              onClick={clearPremoves}
+              aria-label="Limpar premoves"
+              title="Limpar premoves"
+              className="flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-rose-500/60 px-2 text-xs font-semibold tabular-nums text-rose-400 transition-colors hover:bg-rose-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+            >
+              <X size={14} aria-hidden />
+              {premoves.length}
+            </button>
+          ) : (
+            <span className="text-xs font-bold tracking-widest text-rose-500">
+              VS
+            </span>
+          )}
           <PlayerInfo
             name="CPU"
             side={cpuSide}
@@ -755,7 +784,8 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
           />
         </header>
 
-        <div className="aspect-square w-full overflow-hidden rounded-md">
+        {/* touch-manipulation: evita o zoom por toque duplo ao jogar rápido */}
+        <div className="aspect-square w-full touch-manipulation select-none overflow-hidden rounded-md">
           <Chessboard options={chessboardOptions} />
         </div>
       </div>

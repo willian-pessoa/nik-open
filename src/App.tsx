@@ -160,7 +160,7 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col bg-slate-950 h-screen w-screen text-slate-50 text-lg overflow-hidden">
+    <div className="flex flex-col bg-slate-950 h-dvh w-full text-slate-50 text-lg overflow-hidden">
       <AppHeader
         sessionName={activeSession?.name ?? "Sem sessão"}
         onOpenSettings={() => setIsSettingsOpen(true)}
@@ -169,12 +169,9 @@ function App() {
       />
       {/* Área disponível: centraliza o conjunto tabuleiro + lances e serve de
           container para o dimensionamento do tabuleiro (cqw / cqh) */}
-      <div
-        className="flex flex-1 min-h-0 items-center justify-center p-2 @container-size"
-        style={{ "--side-panel-w": MOVES_PANEL_WIDTH } as CSSProperties}
-      >
+      <div className="flex flex-1 min-h-0 items-center justify-center p-2 @container-size [--side-panel-w:0px] [--bottom-panel-h:11.5rem] md:[--side-panel-w:18.5rem] md:[--bottom-panel-h:0px]">
         {activeSession ? (
-          <div className="flex items-stretch gap-2">
+          <div className="flex flex-col items-stretch gap-2 md:flex-row">
             <AppChessBoard
               ref={boardRef}
               key={`${activeSession.id}-${matchNumber}`}
@@ -185,6 +182,7 @@ function App() {
               cpuStartMove={activeSession.cpuStartMove}
               onOpeningFinished={handleOpeningFinished}
               onBadMove={handleBadMove}
+              mode={activeSession.mode}
             />
             <AppChessMoves openingName={openingName} moves={moveHistory} />
           </div>
