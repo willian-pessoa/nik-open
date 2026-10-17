@@ -53,3 +53,16 @@ export interface NewSessionInput {
   playerSide: Side | null;
   cpuStartMove: string | null;
 }
+
+export interface MoveSuggestion {
+  san: string;
+  score: number;
+  isMate: boolean;
+}
+
+export interface BadMoveInfo {
+  pgn: string;
+  playedSan: string;
+  lossCp: number;
+  suggestions: MoveSuggestion[];
+}

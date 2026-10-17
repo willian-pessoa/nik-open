@@ -16,11 +16,12 @@ let stockfishWorker: Worker | null = null;
 let onEvaluationCallback: StockfishCallback | null = null;
 let currentTurn: StockfishTurn = "w";
 let currentResolve: StockfishCallback | null = null;
+let pendingSearches = 0;
 
 export function initStockfish(callback: StockfishCallback) {
+  onEvaluationCallback = callback;
   if (stockfishWorker) return;
 
-  onEvaluationCallback = callback;
   stockfishWorker = new Worker("/stockfish-19-lite-single.js");
 
   stockfishWorker.postMessage("uci");
@@ -62,33 +63,49 @@ export function initStockfish(callback: StockfishCallback) {
     }
 
     if (line.startsWith("bestmove")) {
+      pendingSearches = Math.max(0, pendingSearches - 1);
+
+      // Busca cancelada por um "stop": ignora os dados parciais dela
+      if (pendingSearches > 0) {
+        currentEvaluations = [];
+        return;
+      }
+
       const validEvaluations = currentEvaluations.filter(Boolean);
 
       if (currentResolve && validEvaluations.length > 0) {
-        currentResolve(validEvaluations, currentTurn);
-        currentResolve = null;
-      }
+        // Resolve mesmo sem avaliações (ex.: posição sem lances legais), para a
+        // promessa não ficar pendente para sempre
+        if (currentResolve) {
+          currentResolve(validEvaluations, currentTurn);
+          currentResolve = null;
+        }
 
-      if (onEvaluationCallback && validEvaluations.length > 0) {
-        onEvaluationCallback(validEvaluations, currentTurn);
-      }
+        if (onEvaluationCallback && validEvaluations.length > 0) {
+          onEvaluationCallback(validEvaluations, currentTurn);
+        }
 
-      currentEvaluations = [];
+        currentEvaluations = [];
+      }
     }
   };
 }
 
-export function evaluatePosition(fen: string) {
-  if (!stockfishWorker) return;
-
+function startSearch(worker: Worker, fen: string) {
   const fenParts = fen.split(" ");
   if (fenParts.length > 1) {
     currentTurn = fenParts[1] === "b" ? "b" : "w";
   }
 
-  stockfishWorker.postMessage("stop");
-  stockfishWorker.postMessage(`position fen ${fen}`);
-  stockfishWorker.postMessage("go depth 14");
+  pendingSearches++;
+  worker.postMessage("stop");
+  worker.postMessage(`position fen ${fen}`);
+  worker.postMessage("go depth 14");
+}
+
+export function evaluatePosition(fen: string) {
+  if (!stockfishWorker) return;
+  startSearch(stockfishWorker, fen);
 }
 
 export function analyzePositionAsync(
@@ -109,13 +126,6 @@ export function analyzePositionAsync(
       resolve(evaluations);
     };
 
-    const fenParts = fen.split(" ");
-    if (fenParts.length > 1) {
-      currentTurn = fenParts[1] === "b" ? "b" : "w";
-    }
-
-    stockfishWorker.postMessage("stop");
-    stockfishWorker.postMessage(`position fen ${fen}`);
-    stockfishWorker.postMessage("go depth 14");
+    startSearch(stockfishWorker, fen);
   });
 }

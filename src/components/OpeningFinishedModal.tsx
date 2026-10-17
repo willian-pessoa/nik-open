@@ -1,6 +1,9 @@
-import { Flag, RotateCcw } from "lucide-react";
+import { AlertTriangle, Flag, RotateCcw } from "lucide-react";
 import type { RatingChange } from "../utils/calculateRating";
 import AppModal from "./AppModal";
+import type { BadMoveInfo } from "../types";
+import { formatLoss } from "../utils/formatEval";
+import MoveSuggestionsList from "./MoveSuggestionList";
 
 export interface IOpeningFinishedModalProps {
   open: boolean;
@@ -8,6 +11,10 @@ export interface IOpeningFinishedModalProps {
   // null quando não há sessão ativa (nada foi salvo)
   ratingChange: RatingChange | null;
   onNewMatch: () => void;
+  // "opening": chegou ao fim da linha; "mistake": partida encerrada por lance ruim
+  reason: "opening" | "mistake";
+  // Lance que encerrou a partida (só no motivo "mistake")
+  badMove?: BadMoveInfo | null;
 }
 
 export default function OpeningFinishedModal({
@@ -15,34 +22,70 @@ export default function OpeningFinishedModal({
   openingName,
   ratingChange,
   onNewMatch,
+  reason,
+  badMove,
 }: IOpeningFinishedModalProps) {
+  const isMistake = reason === "mistake" && badMove !== null;
+
   return (
     // Só se sai daqui pelo botão: o tabuleiro fica travado até a nova partida
     <AppModal
       open={open}
-      title="Abertura concluída"
+      title={isMistake ? "Partida encerrada" : "Abertura concluída"}
       onClose={onNewMatch}
       closeOnEscape={false}
       closeOnBackdropClick={false}
       widthClass="max-w-md"
     >
       <div className="flex flex-col gap-4">
-        <div className="flex items-start gap-3">
-          <Flag size={20} className="mt-1 shrink-0 text-rose-400" aria-hidden />
-          <div className="min-w-0">
-            <p className="text-sm uppercase tracking-widest text-slate-500">
-              Abertura
-            </p>
-            <p className="text-lg font-semibold leading-snug text-rose-400">
-              {openingName || "Abertura sem nome"}
-            </p>
-            <p className="mt-1 text-sm text-slate-400">
-              Você chegou ao fim dessa linha baseada nos lances mais populares
-              no Lichess.
-            </p>
+        {isMistake ? (
+          <>
+            <div className="flex items-start gap-3">
+              <AlertTriangle
+                size={20}
+                className="mt-1 shrink-0 text-amber-400"
+                aria-hidden
+              />
+              <p className="text-base text-slate-300">
+                Você jogou{" "}
+                <span className="font-semibold text-rose-400">
+                  {badMove?.playedSan}
+                </span>
+                , que piorou a posição em cerca de{" "}
+                <span className="font-semibold tabular-nums text-slate-100">
+                  {formatLoss(badMove?.lossCp ?? 0)}
+                </span>{" "}
+                peões.
+              </p>
+            </div>
+            <section aria-label="Melhores lances">
+              <p className="mb-1 text-sm uppercase tracking-widest text-slate-500">
+                Melhores lances
+              </p>
+              <MoveSuggestionsList suggestions={badMove?.suggestions ?? []} />
+            </section>
+          </>
+        ) : (
+          <div className="flex items-start gap-3">
+            <Flag
+              size={20}
+              className="mt-1 shrink-0 text-rose-400"
+              aria-hidden
+            />
+            <div className="min-w-0">
+              <p className="text-sm uppercase tracking-widest text-slate-500">
+                Abertura
+              </p>
+              <p className="text-lg font-semibold leading-snug text-rose-400">
+                {openingName || "Abertura sem nome"}
+              </p>
+              <p className="mt-1 text-sm text-slate-400">
+                Você chegou ao fim dessa linha baseada nos lances mais populares
+                no Lichess.
+              </p>
+            </div>
           </div>
-        </div>
-
+        )}
         {ratingChange && <RatingSummary change={ratingChange} />}
 
         <div className="flex justify-end">
