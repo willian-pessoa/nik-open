@@ -1,4 +1,4 @@
-import { Chess, type Square } from "chess.js";
+import { Chess, Move, type Square } from "chess.js";
 import {
   forwardRef,
   useEffect,
@@ -32,6 +32,7 @@ import type { BadMoveInfo, ChessMove, MoveSuggestion, Side } from "../types";
 import { PlayerInfo } from "./PlayerInfo";
 import { uciToSan } from "../utils/uciToSan";
 import { toCentipawns } from "../utils/formatEval";
+import { playSound } from "../utils/playSound";
 
 export interface IAppChessBoardProps {
   playerOrientation?: "w" | "b";
@@ -59,6 +60,10 @@ const MAX_SUGGESTIONS = 5;
 const getBoardOrientation = (playerSide: Side) => {
   return playerSide === "w" ? "white" : "black";
 };
+
+function playMoveSound(move: Move) {
+  playSound(move.captured ? "capture" : "move");
+}
 
 // Retorna a mesma posição, mas com o turno trocado (e sem en passant),
 // usado para calcular lances válidos do jogador durante a vez da CPU (premoves)
@@ -282,11 +287,12 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
 
     function makeCpuMove(from: string, to: string) {
       try {
-        chessGame.move({
+        const move = chessGame.move({
           from: from as Square,
           to: to as Square,
           promotion: "q",
         });
+        playMoveSound(move);
         setChessPosition(chessGame.fen());
         updateMovesHistory();
 
@@ -330,13 +336,16 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
 
         const fenBefore = chessGame.fen();
         let playedSan: string;
+        let playedMove: Move;
 
         try {
-          playedSan = chessGame.move({ from, to, promotion: "q" }).san;
+          playedMove = chessGame.move({ from, to, promotion: "q" });
+          playedSan = playedMove.san;
         } catch {
           return false; // lance ilegal
         }
 
+        playMoveSound(playedMove);
         setChessPosition(chessGame.fen());
         setSelectedSquare(null);
         updateMovesHistory();
@@ -476,12 +485,13 @@ const AppChessBoard = forwardRef<AppChessBoardHandle, IAppChessBoardProps>(
         // A CPU vai "esperar" aqui enquanto o Stockfish analisa
         await analyzePositionAsync(fenSimulada);
 
-        chessGame.move({
+        const cpuMove = chessGame.move({
           from: selectedMoveUci.slice(0, 2) as Square,
           to: selectedMoveUci.slice(2, 4) as Square,
           promotion: selectedMoveUci[4] || "q",
         });
 
+        playMoveSound(cpuMove);
         setChessPosition(chessGame.fen());
 
         if (selectedMoveOpening) {

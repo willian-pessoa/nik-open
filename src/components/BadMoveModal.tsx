@@ -3,6 +3,8 @@ import type { BadMoveInfo } from "../types";
 import { formatLoss } from "../utils/formatEval";
 import AppModal from "./AppModal";
 import MoveSuggestionsList from "./MoveSuggestionList";
+import { useEffect } from "react";
+import { playSound } from "../utils/playSound";
 
 export interface IBadMoveModalProps {
   open: boolean;
@@ -19,9 +21,15 @@ export default function BadMoveModal({
   onRetry,
   onEnd,
 }: IBadMoveModalProps) {
+  const isOpen = open && info !== null;
+
+  useEffect(() => {
+    if (isOpen) playSound("tutor");
+  }, [isOpen]);
+
   return (
     <AppModal
-      open={open && info !== null}
+      open={isOpen}
       title="Lance ruim"
       onClose={onRetry}
       closeOnEscape={false}

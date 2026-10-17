@@ -4,6 +4,8 @@ import AppModal from "./AppModal";
 import type { BadMoveInfo } from "../types";
 import { formatLoss } from "../utils/formatEval";
 import MoveSuggestionsList from "./MoveSuggestionList";
+import { useEffect } from "react";
+import { playSound } from "../utils/playSound";
 
 export interface IOpeningFinishedModalProps {
   open: boolean;
@@ -26,6 +28,10 @@ export default function OpeningFinishedModal({
   badMove,
 }: IOpeningFinishedModalProps) {
   const isMistake = reason === "mistake" && badMove !== null;
+
+  useEffect(() => {
+    if (open) playSound(reason === "mistake" ? "loss" : "win");
+  }, [open, reason]);
 
   return (
     // Só se sai daqui pelo botão: o tabuleiro fica travado até a nova partida
