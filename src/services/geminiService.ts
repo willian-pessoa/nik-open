@@ -18,7 +18,7 @@ Regras:
 - As avaliações do Stockfish que vierem no pedido são a verdade absoluta. Baseie a explicação nelas e nas posições dadas.
 - Não invente variantes, táticas ou lances que não estejam nos dados. Se não souber o motivo exato, diga o que a avaliação indica, sem inventar.
 - Use a notação algébrica dos dados (ex.: Nf3, Qh5) e cite as casas/peças em palavras quando ajudar.
-- Responda em texto corrido, sem markdown, sem listas e sem títulos, com no máximo 5 frases curtas.`;
+- Responda em texto corrido, sem markdown, sem listas e sem títulos, com no máximo 4 frases curtas.`;
 
 export interface ExplainBadMoveInput {
   info: BadMoveInfo;
