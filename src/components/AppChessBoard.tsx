@@ -12,7 +12,6 @@ import {
   fenStringToPositionObject,
   type ChessboardOptions,
   type PieceDropHandlerArgs,
-  type PieceHandlerArgs,
   type SquareHandlerArgs,
 } from "react-chessboard";
 import {
@@ -61,8 +60,7 @@ export interface AppChessBoardHandle {
 }
 
 // Perda (em centipawns) a partir da qual o lance é considerado ruim
-const BAD_MOVE_THRESHOLD_CP = 150;
-const MIN_GAMES_IN_BOOK = 50;
+const MIN_GAMES_IN_BOOK = 20;
 const MIN_PLIES_BEFORE_OPENING_END = 2;
 const MAX_SUGGESTIONS = 5;
 
