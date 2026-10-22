@@ -13,10 +13,11 @@ import { calculateRating, type RatingChange } from "./utils/calculateRating";
 import OpeningFinishedModal from "./components/OpeningFinishedModal";
 import BadMoveModal from "./components/BadMoveModal";
 import { pickRandomSide } from "./utils/pickRandomSide";
-import { Layers, Plus } from "lucide-react";
+import { KeyRound, Layers, Plus } from "lucide-react";
 import HistoryModal from "./components/HistoryModal";
 import SettingsModal from "./components/SettingsModal";
 import { useSettings } from "./hooks/useSettings";
+import { hasLichessToken } from "./utils/hasLichessToken";
 
 function App() {
   const {
@@ -32,6 +33,9 @@ function App() {
   const [isSessionsOpen, setIsSessionsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { settings, updateSettings } = useSettings();
+
+  const lichessReady = hasLichessToken(settings);
+
   const [openingName, setOpeningName] = useState<string>("");
   const [moveHistory, setMoveHistory] = useState<ChessMove[]>([]);
   const [randomSide, setRandomSide] = useState<Side>(pickRandomSide());
@@ -168,7 +172,28 @@ function App() {
       {/* Área disponível: centraliza o conjunto tabuleiro + lances e serve de
           container para o dimensionamento do tabuleiro (cqw / cqh) */}
       <div className="flex flex-1 min-h-0 items-center justify-center p-2 @container-size [--side-panel-w:0px] [--bottom-panel-h:11.5rem] md:[--side-panel-w:18.5rem] md:[--bottom-panel-h:0px]">
-        {activeSession ? (
+        {!lichessReady ? (
+          <div className="flex max-w-sm flex-col items-center gap-4 rounded-xl border border-dashed border-slate-800 bg-slate-900 p-8 text-center">
+            <KeyRound size={32} className="text-rose-400" aria-hidden />
+            <div>
+              <p className="text-lg font-semibold text-slate-100">
+                Token do Lichess necessário
+              </p>
+              <p className="mt-1 text-base text-slate-400">
+                O app usa o banco de aberturas do Lichess para jogar. Configure
+                seu token para começar a treinar.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen(true)}
+              className="flex cursor-pointer items-center gap-2 rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+            >
+              <KeyRound size={16} aria-hidden />
+              Abrir configurações
+            </button>
+          </div>
+        ) : activeSession ? (
           <div className="flex flex-col items-stretch gap-2 md:flex-row">
             <AppChessBoard
               ref={boardRef}
