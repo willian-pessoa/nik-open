@@ -22,7 +22,9 @@ export function initStockfish(callback: StockfishCallback) {
   onEvaluationCallback = callback;
   if (stockfishWorker) return;
 
-  stockfishWorker = new Worker("/stockfish-19-lite-single.js");
+  stockfishWorker = new Worker(
+    `${import.meta.env.BASE_URL}stockfish-19-lite-single.js`,
+  );
 
   stockfishWorker.postMessage("uci");
   stockfishWorker.postMessage("setoption name MultiPV value 5");

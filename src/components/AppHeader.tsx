@@ -19,7 +19,7 @@ export default function AppHeader({
       {/* Logo + sessão atual */}
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <img
-          src="/logo.png"
+          src={`${import.meta.env.BASE_URL}logo.png`}
           alt="Logo"
           className="h-9 w-9 shrink-0 rounded-lg object-contain"
         />
