@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from "react";
+import { useRef, useState } from "react";
 
 import AppChessBoard, {
   type AppChessBoardHandle,
@@ -17,8 +17,6 @@ import { Layers, Plus } from "lucide-react";
 import HistoryModal from "./components/HistoryModal";
 import SettingsModal from "./components/SettingsModal";
 import { useSettings } from "./hooks/useSettings";
-
-const MOVES_PANEL_WIDTH = "18rem";
 
 function App() {
   const {

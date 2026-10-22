@@ -1,6 +1,5 @@
 import { AlertTriangle, Flag, Undo2 } from "lucide-react";
 import type { BadMoveInfo } from "../types";
-import { formatLoss } from "../utils/formatEval";
 import AppModal from "./AppModal";
 import MoveSuggestionsList from "./MoveSuggestionList";
 import { useEffect } from "react";
