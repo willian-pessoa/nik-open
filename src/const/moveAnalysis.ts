@@ -10,7 +10,7 @@ interface MoveAnalysisConfig {
 
 export const MOVE_ANALYSIS: Record<SessionMode, MoveAnalysisConfig> = {
   // Tutor pode desfazer o lance, então pode ser mais rigoroso
-  tutor: { maxWinLoss: 6, floorCp: -70 },
+  tutor: { maxWinLoss: 6, floorCp: -75 },
   // No desafio o erro encerra a partida, então é mais tolerante
   challenger: { maxWinLoss: 10, floorCp: -100 },
 };
