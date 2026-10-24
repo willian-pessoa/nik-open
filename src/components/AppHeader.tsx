@@ -1,11 +1,4 @@
-import {
-  CircleHelp,
-  History,
-  Info,
-  Layers,
-  Settings,
-  Timeline,
-} from "lucide-react";
+import { CircleHelp, Info, Layers, Settings, Timeline } from "lucide-react";
 import AppIconButton from "./AppIconButton";
 
 export interface IAppHeaderProps {
