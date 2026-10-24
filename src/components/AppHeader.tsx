@@ -1,4 +1,11 @@
-import { History, Layers, Settings } from "lucide-react";
+import {
+  CircleHelp,
+  History,
+  Info,
+  Layers,
+  Settings,
+  Timeline,
+} from "lucide-react";
 import AppIconButton from "./AppIconButton";
 
 export interface IAppHeaderProps {
@@ -6,6 +13,8 @@ export interface IAppHeaderProps {
   onOpenSettings: () => void;
   onOpenSessions: () => void;
   onOpenHistory: () => void;
+  onOpenHelp: () => void;
+  onOpenAbout: () => void;
 }
 
 export default function AppHeader({
@@ -13,6 +22,8 @@ export default function AppHeader({
   onOpenSettings,
   onOpenSessions,
   onOpenHistory,
+  onOpenHelp,
+  onOpenAbout,
 }: IAppHeaderProps) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-800 bg-slate-900 px-3 sm:gap-4">
@@ -39,9 +50,17 @@ export default function AppHeader({
 
       {/* Ações */}
       <nav className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        {/* Sobre */}
+        <AppIconButton label="Sobre" onClick={onOpenAbout}>
+          <Info size={24} aria-hidden />
+        </AppIconButton>
+        {/* Wizard de ajuda */}
+        <AppIconButton label="Ajuda" onClick={onOpenHelp}>
+          <CircleHelp size={24} aria-hidden />
+        </AppIconButton>
         {/* Histórico de partidas da sessão atual */}
         <AppIconButton label="Histórico de partidas" onClick={onOpenHistory}>
-          <History size={24} aria-hidden />
+          <Timeline size={24} aria-hidden />
         </AppIconButton>
         {/* Gerenciar sessões: selecionar, criar ou deletar */}
         <AppIconButton label="Gerenciar sessões" onClick={onOpenSessions}>

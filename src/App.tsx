@@ -18,6 +18,9 @@ import HistoryModal from "./components/HistoryModal";
 import SettingsModal from "./components/SettingsModal";
 import { useSettings } from "./hooks/useSettings";
 import { hasLichessToken } from "./utils/hasLichessToken";
+import { loadHelpDismissed, saveHelpDismissed } from "./services/helpStorage";
+import HelpModal from "./components/HelpModal";
+import AboutModal from "./components/AboutModal";
 
 function App() {
   const {
@@ -29,10 +32,13 @@ function App() {
     addMatch,
   } = useSessions();
 
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSessionsOpen, setIsSessionsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(() => !loadHelpDismissed());
   const { settings, updateSettings } = useSettings();
+  const [helpDismissed, setHelpDismissed] = useState(() => loadHelpDismissed());
 
   const lichessReady = hasLichessToken(settings);
 
@@ -69,6 +75,12 @@ function App() {
   }
 
   const playerSide: Side = activeSession?.playerSide ?? randomSide;
+
+  function handleDismissHelp() {
+    saveHelpDismissed();
+    setHelpDismissed(true);
+    setIsHelpOpen(false);
+  }
 
   function finishMatchAsLoss(info: BadMoveInfo) {
     boardRef.current?.lock();
@@ -168,6 +180,8 @@ function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenSessions={() => setIsSessionsOpen(true)}
         onOpenHistory={() => setIsHistoryOpen(true)}
+        onOpenHelp={() => setIsHelpOpen(true)}
+        onOpenAbout={() => setIsAboutOpen(true)}
       />
       {/* Área disponível: centraliza o conjunto tabuleiro + lances e serve de
           container para o dimensionamento do tabuleiro (cqw / cqh) */}
@@ -274,6 +288,15 @@ function App() {
         onClose={() => setIsSettingsOpen(false)}
         onSave={updateSettings}
       />
+
+      <HelpModal
+        open={isHelpOpen}
+        showDismiss={!helpDismissed}
+        onClose={() => setIsHelpOpen(false)}
+        onDismiss={handleDismissHelp}
+      />
+
+      <AboutModal open={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
     </div>
   );
 }
