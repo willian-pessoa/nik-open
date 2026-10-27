@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { ChessMove } from "../types";
+import { MoveNotation } from "./MoveNotation";
 
 export interface IAppChessMovesProps {
   openingName: string;
@@ -63,7 +64,7 @@ export default function AppChessMoves({
   }, [moves.length]);
 
   const moveCellClass = (index: number) =>
-    `px-2 py-0.5 md:py-1 rounded-md font-medium transition-colors ${
+    `flex items-center px-2 py-0.5 md:py-1 rounded-md font-medium transition-colors ${
       index === lastMoveIndex
         ? "bg-rose-500 text-white shadow shadow-rose-500/30"
         : "text-slate-200"
@@ -125,14 +126,14 @@ export default function AppChessMoves({
                   </span>
                   {pair.white ? (
                     <span className={moveCellClass(pair.whiteIndex)}>
-                      {pair.white}
+                      <MoveNotation san={pair.white} />
                     </span>
                   ) : (
                     <span className="px-2 py-1 text-slate-600">…</span>
                   )}
                   {pair.black ? (
                     <span className={moveCellClass(pair.blackIndex)}>
-                      {pair.black}
+                      <MoveNotation san={pair.black} />
                     </span>
                   ) : (
                     <span />

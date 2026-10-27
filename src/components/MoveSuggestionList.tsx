@@ -1,5 +1,6 @@
 import type { MoveSuggestion } from "../types";
 import { formatEval } from "../utils/formatEval";
+import { MoveNotation } from "./MoveNotation";
 
 interface IMoveSuggestionsListProps {
   suggestions: MoveSuggestion[];
@@ -28,7 +29,9 @@ export default function MoveSuggestionsList({
             <span className="w-4 text-sm tabular-nums text-slate-500">
               {i + 1}.
             </span>
-            <span className="font-semibold text-slate-100">{s.san}</span>
+            <span className="font-semibold text-slate-100">
+              <MoveNotation san={s.san} />
+            </span>
           </span>
           <span
             className={`text-sm font-medium tabular-nums ${

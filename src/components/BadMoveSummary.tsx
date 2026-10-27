@@ -1,5 +1,6 @@
 import type { BadMoveInfo } from "../types";
 import { formatEval, formatLoss } from "../utils/formatEval";
+import { MoveNotation } from "./MoveNotation";
 
 export interface IBadMoveSummaryProps {
   info: BadMoveInfo;
@@ -10,7 +11,9 @@ const DECISIVE_LOSS_CP = 2000;
 
 export default function BadMoveSummary({ info }: IBadMoveSummaryProps) {
   const san = (
-    <span className="font-semibold text-rose-400">{info.playedSan}</span>
+    <span className="font-semibold text-rose-400">
+      <MoveNotation san={info.playedSan} />
+    </span>
   );
   const loss = (
     <span className="font-semibold tabular-nums text-slate-100">

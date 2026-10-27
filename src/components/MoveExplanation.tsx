@@ -1,6 +1,7 @@
 import { Loader2, RotateCw, Sparkles } from "lucide-react";
 import { useMoveExplanation } from "../hooks/useMoveExplanation";
 import type { BadMoveInfo } from "../types";
+import { glyphifyText } from "../utils/glyphifyText";
 
 export interface IMoveExplanationProps {
   info: BadMoveInfo;
@@ -66,7 +67,7 @@ export default function MoveExplanation({
           aria-live="polite"
           className="whitespace-pre-line text-base leading-relaxed text-slate-200"
         >
-          {state.text}
+          {glyphifyText(state.text)}
         </p>
       )}
     </section>
