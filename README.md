@@ -17,13 +17,20 @@ Os lances do adversário vêm do banco de partidas reais do Lichess, filtrados p
 
 ---
 
+<div align="center">
+
+<img src="docs/screenshot.png" alt="Tela do nik-open: tabuleiro, abertura identificada e lista de lances" width="49%" />
+<img src="docs/screenshot-tutor.png" alt="Modo tutor: lance ruim, explicação e melhores lances do Stockfish" width="49%" />
+
+</div>
+
 ## Como funciona
 
 A cada partida, a CPU responde com lances sorteados **proporcionalmente à popularidade** deles no Lichess Explorer, considerando as faixas de rating mais próximas do seu nível. Assim você enfrenta as linhas que jogadores reais do seu nível realmente encontram.
 
 A partida termina de uma destas formas:
 
-- **Abertura concluída:** a posição saiu do "livro" (menos de 50 partidas no banco). Vitória.
+- **Abertura concluída:** a posição saiu do "livro" (menos de 20 partidas no banco). Vitória.
 - **Lance ruim:** o Stockfish detecta que seu lance custou caro. Dependendo do modo, a partida acaba (derrota) ou o tutor entra em ação.
 
 ## Funcionalidades
@@ -31,11 +38,12 @@ A partida termina de uma destas formas:
 - **Dois modos de treino**
   - **Desafio:** um lance ruim encerra a partida, com tolerância maior.
   - **Tutor:** um lance ruim abre um modal com os melhores lances e a opção de tentar de novo (cada ajuda reduz o ganho de rating) ou encerrar.
-- **Explicações com IA (opcional):** com uma chave do Gemini, o tutor explica o erro em linguagem natural, em português.
+- **Explicações com IA (opcional):** com uma chave do Gemini, o tutor explica o erro em linguagem natural, em português. A avaliação dos lances é sempre do Stockfish; a IA só transforma esses resultados em texto.
 - **Sessões:** crie quantas quiser (ex.: "Siciliana", "Defesa Francesa"), cada uma com nome, modo, rating inicial, cor das peças e lance inicial da CPU.
 - **Sistema de rating:** ganhe ou perca pontos por partida, com bônus de sequência de vitórias/derrotas (rating de 400 a 2800).
 - **Premoves:** enfileire lances enquanto a CPU pensa, com validação em cadeia.
 - **Jogue por clique:** selecione a peça e clique no destino, com destaque dos lances legais.
+- **Notação com símbolos:** a lista de lances e o tutor mostram as peças como ♞ ♛ ♜ ♝ ♚ (ex.: ♞f3) em vez das letras.
 - **Histórico por sessão:** veja todas as partidas e abra qualquer uma na análise do Lichess.
 - **Efeitos sonoros** sintetizados com a Web Audio API, sem arquivos de áudio.
 - **Responsivo:** layout pensado para desktop e celular.
@@ -84,12 +92,12 @@ O worker carrega `/stockfish-19-lite-single.js`, então esse arquivo precisa est
 
 ## Configuração
 
-Tudo é opcional e feito dentro do app, em **Configurações** (ícone de engrenagem). As chaves ficam salvas só no seu navegador.
+Tudo é feito dentro do app, em **Configurações** (ícone de engrenagem). As chaves ficam salvas só no seu navegador.
 
-| Chave            | Para quê                                                   | Onde criar                                                                 |
-| ---------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Token do Lichess | Evita limites de requisição no Explorer (sem nenhum scope) | [lichess.org/account/oauth/token](https://lichess.org/account/oauth/token) |
-| Chave do Gemini  | Explicações em linguagem natural no modo tutor             | [aistudio.google.com/apikey](https://aistudio.google.com/apikey)           |
+| Chave            | Para quê                                                                      | Onde criar                                                                 |
+| ---------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Token do Lichess | Necessário para consultar o banco de aberturas do Explorer (sem nenhum scope) | [lichess.org/account/oauth/token](https://lichess.org/account/oauth/token) |
+| Chave do Gemini  | Opcional: explicações em linguagem natural no modo tutor                      | [aistudio.google.com/apikey](https://aistudio.google.com/apikey)           |
 
 Como alternativa para o token do Lichess, defina `VITE_ACCESS_TOKEN` em um arquivo `.env` na raiz (já ignorado pelo git):
 
@@ -104,9 +112,13 @@ VITE_ACCESS_TOKEN=lip_seu_token_aqui
 3. A diferença é convertida em **chance de vitória** com a mesma curva do Lichess.
 4. O lance é considerado ruim se:
    - a chance de vitória caiu além do limite do modo (**6 pp** no tutor, **10 pp** no desafio); ou
-   - a posição ficou abaixo do piso (**-0,70** no tutor, **-1,00** no desafio) e o lance perdeu pelo menos 3 pp.
+   - a posição ficou abaixo do piso (**-0,75** no tutor, **-1,00** no desafio) e o lance perdeu pelo menos 3 pp.
 
 Os tipos de erro são `mistake` (piorou a posição), `missed` (deixou escapar vantagem) e `drift` (acúmulo de imprecisões).
+
+### Explicações do tutor
+
+O Gemini não avalia nada: ele recebe a avaliação e os melhores lances do Stockfish, mais fatos calculados pelo chess.js (peça capturada, roque, desenvolvimento), e só os escreve em texto corrido.
 
 ### Rating
 

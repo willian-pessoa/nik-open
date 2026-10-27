@@ -19,10 +19,6 @@ export type SessionMode = "challenger" | "tutor";
 
 export type MatchResult = "win" | "loss";
 
-export interface PlayerSetting {
-  lichessToken: string | null;
-}
-
 export interface Match {
   pgn: string;
   playerSide: Side;
