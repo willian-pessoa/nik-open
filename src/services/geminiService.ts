@@ -11,14 +11,30 @@ const REQUEST_TIMEOUT_MS = 20_000;
 // Folga para modelos que gastam parte do limite "pensando" antes de responder
 const MAX_OUTPUT_TOKENS = 2048;
 
-const SYSTEM_INSTRUCTION = `Você é um treinador de xadrez paciente e didático, conversando em português do Brasil com um jogador amador que está treinando aberturas.
+const SYSTEM_INSTRUCTION = `Você é um treinador de xadrez objetivo e didático, escrevendo em português do Brasil para um jogador amador que treina aberturas.
 
 Regras:
-- Explique de forma humana e simples, como um professor ao lado do tabuleiro. Não use jargão de engine (nada de "centipawns").
-- As avaliações do Stockfish que vierem no pedido são a verdade absoluta. Baseie a explicação nelas e nas posições dadas.
-- Não invente variantes, táticas ou lances que não estejam nos dados. Se não souber o motivo exato, diga o que a avaliação indica, sem inventar.
-- Use a notação algébrica dos dados (ex.: Nf3, Qh5) e cite as casas/peças em palavras quando ajudar.
-- Responda em texto corrido, sem markdown, sem listas e sem títulos, com no máximo 4 frases curtas.`;
+- Comece direto pelo lance jogado. Nada de saudação, apelido ("meu amigo"), elogio ou "vamos olhar com calma".
+- Fale com o jogador na 2ª pessoa ("você"). Nunca use "nós"/"nossa".
+- Use os fatos e avaliações fornecidos como verdade absoluta e ligue-os às consequências óbvias (peça capturada = perda de material; roque = rei mais seguro; desenvolver = trazer peça para o jogo). Não invente variantes, ameaças ou lances que não estejam nos dados.
+- Explique o motivo, não só o resultado: diga o que aconteceu no tabuleiro por causa do lance, em linguagem de professor.
+- Nunca critique o lance sugerido nem contradiga a avaliação do Stockfish. Se o motivo exato do lance sugerido não estiver nos dados, diga só que ele mantém a posição melhor, sem inventar justificativa.
+- Não cite números de avaliação nem "peões de diferença"; use palavras (equilibrada, desvantagem clara, decisiva). Sem jargão de engine (nada de "centipawns").
+- Não dê dicas finais nem conselhos genéricos ("controle o centro", "desenvolva as peças antes da dama"). Só explique este lance.
+- Use a notação dos dados (ex.: Nf3, Qh5).
+- Texto corrido, sem markdown, sem listas, com exatamente 3 frases curtas (cerca de 50 a 60 palavras no total), nesta ordem: (1) o problema do lance jogado; (2) a consequência concreta para o jogador; (3) o que o primeiro lance sugerido faz de melhor.
+`;
+
+const PIECE_NAMES: Record<string, string> = {
+  p: "peão",
+  n: "cavalo",
+  b: "bispo",
+  r: "torre",
+  q: "dama",
+  k: "rei",
+};
+
+const HOME_RANK = { w: "1", b: "8" } as const;
 
 export interface ExplainBadMoveInput {
   info: BadMoveInfo;
@@ -36,6 +52,81 @@ interface GeminiResponse {
   error?: { message?: string };
 }
 
+// Traduz a avaliação em palavras, para o modelo não ficar repetindo números
+function evalInWords(score: number, isMate: boolean): string {
+  if (isMate)
+    return score > 0
+      ? "mate forçado a favor do jogador"
+      : "mate forçado contra o jogador";
+  const a = Math.abs(score);
+  if (a < 30) return "posição equilibrada";
+  const who = score > 0 ? "do jogador" : "do adversário";
+  if (a < 100) return `leve vantagem ${who}`;
+  if (a < 300) return `vantagem clara ${who}`;
+  return `vantagem decisiva ${who}`;
+}
+
+// Consequências concretas do lance, calculadas (não deduzidas pelo modelo)
+function deriveFacts(
+  fenBefore: string,
+  fenAfter: string,
+  playedSan: string,
+  bestReply?: string | null,
+): string[] {
+  const facts: string[] = [];
+  try {
+    const played = new Chess(fenBefore).move(playedSan);
+
+    if (bestReply) {
+      const reply = new Chess(fenAfter).move(bestReply);
+      if (reply.isCapture() && reply.to === played.to) {
+        facts.push(
+          `A resposta do adversário captura justamente a peça que o jogador acabou de mover (${PIECE_NAMES[played.piece]}).`,
+        );
+      } else if (reply.isCapture()) {
+        facts.push(
+          `A resposta do adversário captura ${PIECE_NAMES[reply.captured!]} do jogador.`,
+        );
+      }
+    }
+    if (played.isCapture()) {
+      facts.push(`O lance jogado capturou ${PIECE_NAMES[played.captured!]}.`);
+    }
+  } catch {
+    // sem fatos extras
+  }
+  return facts;
+}
+
+// Descreve um lance em fatos verificáveis (calculados pelo chess.js)
+function describeMove(fen: string, san: string): string {
+  try {
+    const game = new Chess(fen);
+    const m = game.move(san);
+
+    if (m.isKingsideCastle()) return `${san}: roque curto`;
+    if (m.isQueensideCastle()) return `${san}: roque longo`;
+
+    let text = `${san}: ${PIECE_NAMES[m.piece]} de ${m.from} para ${m.to}`;
+    if (m.isCapture()) text += `, capturando ${PIECE_NAMES[m.captured!]}`;
+    if (
+      (m.piece === "n" || m.piece === "b") &&
+      m.from[1] === HOME_RANK[m.color]
+    ) {
+      text += " (desenvolvendo a peça)";
+    }
+    if (m.isEnPassant()) text += " (en passant)";
+    if (m.isPromotion()) text += `, promovendo a ${PIECE_NAMES[m.promotion!]}`;
+
+    if (m.san.endsWith("#")) text += ", xeque-mate";
+    else if (m.san.endsWith("+")) text += ", dando xeque";
+
+    return text;
+  } catch {
+    return san;
+  }
+}
+
 // Reconstrói a partida a partir do PGN (que já inclui o lance ruim como último
 // lance) para obter o lado do jogador e a posição ANTES do lance.
 function describePosition(pgn: string) {
@@ -43,11 +134,13 @@ function describePosition(pgn: string) {
     const game = new Chess();
     game.loadPgn(pgn);
     const playerIsWhite = game.history().length % 2 === 1;
+    const fenAfter = game.fen(); // posição depois do lance ruim
     game.undo();
     return {
       playerIsWhite,
       pgnBefore: game.pgn(),
       fenBefore: game.fen(),
+      fenAfter,
     };
   } catch {
     return null;
@@ -56,39 +149,53 @@ function describePosition(pgn: string) {
 
 function buildPrompt(info: BadMoveInfo, openingName: string): string {
   const position = describePosition(info.pgn);
-
   const lines: string[] = [`Abertura: ${openingName || "não identificada"}`];
 
   if (position) {
     lines.push(
       `O jogador está de ${position.playerIsWhite ? "brancas" : "pretas"}.`,
       `Lances antes do erro (PGN): ${position.pgnBefore || "(início da partida)"}`,
-      `Posição antes do lance (FEN): ${position.fenBefore}`,
+      `Lance jogado (fato): ${describeMove(position.fenBefore, info.playedSan)}`,
+      describeImpact(info),
     );
-  } else {
-    lines.push(`Partida até o erro (PGN): ${info.pgn}`);
-  }
 
-  lines.push(`Lance jogado: ${info.playedSan}`, describeImpact(info));
+    if (info.bestReply) {
+      lines.push(
+        `Melhor resposta do adversário (fato): ${describeMove(position.fenAfter, info.bestReply)}`,
+      );
+    }
 
-  if (info.bestReply) {
     lines.push(
-      `Melhor resposta do adversário a esse lance, segundo o Stockfish: ${info.bestReply}`,
-    );
-  }
-
-  if (info.suggestions.length > 0) {
-    lines.push(
-      "Melhores lances que o jogador tinha naquela posição, com a avaliação do Stockfish do ponto de vista do jogador (positivo = bom para ele; #N = mate em N a favor, #-N = mate contra):",
-      ...info.suggestions.map(
-        (s, i) => `${i + 1}. ${s.san} (${formatEval(s)})`,
+      ...deriveFacts(
+        position.fenBefore,
+        position.fenAfter,
+        info.playedSan,
+        info.bestReply,
       ),
+    );
+
+    if (info.suggestions.length > 0) {
+      lines.push(
+        "Melhores lances que o jogador tinha, com a situação da posição depois de cada um:",
+        ...info.suggestions
+          .slice(0, 3)
+          .map(
+            (s, i) =>
+              `${i + 1}. ${describeMove(position.fenBefore, s.san)} → ${evalInWords(s.score, s.isMate)}`,
+          ),
+      );
+    }
+  } else {
+    lines.push(
+      `Partida até o erro (PGN): ${info.pgn}`,
+      `Lance jogado: ${info.playedSan}`,
+      describeImpact(info),
     );
   }
 
   lines.push(
     "",
-    "Explique em poucas frases: (1) qual problema o lance jogado criou ou o que ele deixou de fazer; (2) por que o primeiro lance sugerido é melhor; (3) uma ideia simples para o jogador lembrar nessa abertura.",
+    "Responda em 3 frases curtas: (1) o problema do lance jogado; (2) a consequência concreta para o jogador (peça perdida, iniciativa cedida, posição que piorou), usando os fatos acima; (3) o que o primeiro lance sugerido faz de melhor. Sem dica final.",
   );
 
   return lines.join("\n");
